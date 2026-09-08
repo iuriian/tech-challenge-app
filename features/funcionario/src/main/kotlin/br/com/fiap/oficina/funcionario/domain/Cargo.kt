@@ -1,6 +1,8 @@
-package br.com.fiap.oficina.domain.enum
+package br.com.fiap.oficina.funcionario.domain
 
-enum class Cargo(val id: Int) {
+enum class Cargo(
+    val id: Int,
+) {
     ATENDENTE(1),
     MECANICO(2),
     ;
