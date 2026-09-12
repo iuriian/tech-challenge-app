@@ -4,14 +4,15 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
+import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 @DisplayName("Use case - Criar Funcionario")
 class CriarFuncionarioUseCaseTest {
@@ -40,7 +41,7 @@ class CriarFuncionarioUseCaseTest {
             FuncionarioResponse(
                 id = funcionario.id.value.toString(),
                 nome = funcionario.nome,
-                cargoDescricao = funcionario.cargo.name,
+                cargoDescricao = funcionario.cargo.descricao,
                 cpf = funcionario.cpf.value,
             )
 
@@ -51,17 +52,17 @@ class CriarFuncionarioUseCaseTest {
 
         val result = useCase.executar(request)
 
-        assertTrue(result.isSuccess)
-        assertEquals(response, result.getOrNull())
+        assertEquals(response, result)
 
         verify(exactly = 1) { repositoryMock.buscarPorCpf(request.cpf) }
+        verify(exactly = 1) { mapperMock.toDomain(request) }
         verify(exactly = 1) { repositoryMock.salvar(funcionario) }
         verify(exactly = 1) { mapperMock.toResponse(funcionario) }
     }
 
     @Test
-    @DisplayName("Dado CPF já registrado, quando criar funcionário, então deve falhar com mensagem de erro")
-    fun givenCpfNotRegistered_whenCreatingFuncionario_thenShouldFail() {
+    @DisplayName("Dado CPF já registrado, quando criar funcionário, então deve lançar exceção")
+    fun givenCpfAlreadyRegistered_whenCreatingFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
                 nome = "Maria Santos",
@@ -69,57 +70,62 @@ class CriarFuncionarioUseCaseTest {
                 cpf = "98765432100",
             )
 
-        val funcionario =
+        val funcionarioExistente =
             Funcionario.criar(
                 nome = request.nome,
                 cargo = request.cargo,
                 cpf = request.cpf,
             )
 
-        every { repositoryMock.buscarPorCpf(request.cpf) } returns funcionario
+        every { repositoryMock.buscarPorCpf(request.cpf) } returns funcionarioExistente
 
-        val result = useCase.executar(request)
+        val exception =
+            assertFailsWith<FuncionarioException> {
+                useCase.executar(request)
+            }
 
-        assertTrue(result.isFailure)
-        assertEquals("Funcionário já cadastrado", result.exceptionOrNull()?.message)
+        assertEquals("Funcionário já cadastrado", exception.message)
+
         verify(exactly = 1) { repositoryMock.buscarPorCpf(request.cpf) }
+        verify(exactly = 0) { mapperMock.toDomain(any()) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
     }
 
     @Test
-    @DisplayName("Dado cargo inválido, quando criar funcionário, então deve falhar")
-    fun givenInvalidCargo_whenCreatingFuncionario_thenShouldFail() {
+    @DisplayName("Dado cargo inválido, quando criar funcionário, então deve lançar exceção")
+    fun givenInvalidCargo_whenCreatingFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
                 nome = "Pedro Costa",
                 cargo = "CARGO_INEXISTENTE",
                 cpf = "11122233344",
             )
-        val funcionarioExistente =
-            Funcionario.reconstruir(
-                id = "00000000-0000-0000-0000-000000000100",
-                nome = "Funcionário Existente",
-                cargo = "ATENDENTE",
-                cpf = request.cpf,
-            )
 
-        every { repositoryMock.buscarPorCpf(request.cpf) } returns funcionarioExistente
-        every { mapperMock.toDomain(request) } throws IllegalArgumentException("Cargo inválido")
+        every { repositoryMock.buscarPorCpf(request.cpf) } returns null
+        every { mapperMock.toDomain(request) } throws IllegalArgumentException("Cargo inválido!")
 
-        val result = useCase.executar(request)
+        val exception =
+            assertFailsWith<IllegalArgumentException> {
+                useCase.executar(request)
+            }
 
-        assertTrue(result.isFailure)
+        assertEquals("Cargo inválido!", exception.message)
+
         verify(exactly = 1) { repositoryMock.buscarPorCpf(request.cpf) }
+        verify(exactly = 1) { mapperMock.toDomain(request) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
     }
 
     @Test
-    @DisplayName("Dado erro no repositório, quando criar funcionário, então deve falhar")
-    fun givenRepositoryError_whenCreatingFuncionario_thenShouldFail() {
+    @DisplayName("Dado erro no repositório, quando criar funcionário, então deve propagar a exceção")
+    fun givenRepositoryError_whenCreatingFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
                 nome = "Ana Oliveira",
                 cargo = "MECANICO",
                 cpf = "55566677788",
             )
+
         val funcionario =
             Funcionario.criar(
                 nome = request.nome,
@@ -131,12 +137,16 @@ class CriarFuncionarioUseCaseTest {
         every { mapperMock.toDomain(request) } returns funcionario
         every { repositoryMock.salvar(funcionario) } throws RuntimeException("Erro ao salvar no banco")
 
-        val result = useCase.executar(request)
+        val exception =
+            assertFailsWith<RuntimeException> {
+                useCase.executar(request)
+            }
 
-        assertTrue(result.isFailure)
-        assertEquals("Erro ao salvar no banco", result.exceptionOrNull()?.message)
+        assertEquals("Erro ao salvar no banco", exception.message)
+
         verify(exactly = 1) { repositoryMock.buscarPorCpf(request.cpf) }
         verify(exactly = 1) { mapperMock.toDomain(request) }
         verify(exactly = 1) { repositoryMock.salvar(funcionario) }
+        verify(exactly = 0) { mapperMock.toResponse(any()) }
     }
 }

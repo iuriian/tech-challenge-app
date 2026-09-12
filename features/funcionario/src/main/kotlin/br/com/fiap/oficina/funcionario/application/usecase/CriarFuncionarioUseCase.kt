@@ -8,5 +8,5 @@ import br.com.fiap.oficina.funcionario.domain.Funcionario
  * Contrato a ser implementado no FuncionarioController no módulo api
  */
 interface CriarFuncionarioUseCase {
-    fun executar(request: FuncionarioRequest): Result<FuncionarioResponse>
+    fun executar(request: FuncionarioRequest): FuncionarioResponse
 }

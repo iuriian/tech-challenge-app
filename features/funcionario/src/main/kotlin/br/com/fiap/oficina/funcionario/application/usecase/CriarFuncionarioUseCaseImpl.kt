@@ -12,16 +12,13 @@ internal class CriarFuncionarioUseCaseImpl(
     private val repository: FuncionarioRepository,
     private val mapper: FuncionarioMapper,
 ) : CriarFuncionarioUseCase {
-    override fun executar(request: FuncionarioRequest): Result<FuncionarioResponse> =
-        runCatching {
-            if (repository.buscarPorCpf(request.cpf) != null) {
-                throw FuncionarioException("Funcionário já cadastrado")
-            } else {
-                mapper.toDomain(request)
-            }
-        }.mapCatching { funcionario ->
-            repository.salvar(funcionario)
-        }.mapCatching {
-            mapper.toResponse(it)
+    override fun executar(request: FuncionarioRequest): FuncionarioResponse {
+        if (repository.buscarPorCpf(request.cpf) != null) {
+            throw FuncionarioException("Funcionário já cadastrado")
         }
+
+        val funcionario = mapper.toDomain(request)
+
+        return mapper.toResponse(repository.salvar(funcionario))
+    }
 }
