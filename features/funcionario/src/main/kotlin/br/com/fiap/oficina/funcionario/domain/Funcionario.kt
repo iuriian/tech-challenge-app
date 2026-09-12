@@ -2,7 +2,7 @@ package br.com.fiap.oficina.funcionario.domain
 
 import java.util.UUID
 
-class Funcionario private constructor(
+data class Funcionario private constructor(
     val id: FuncionarioId,
     val nome: String,
     val cpf: CPF,
@@ -38,4 +38,15 @@ class Funcionario private constructor(
                 cargo = Cargo.fromName(cargo),
             )
     }
+
+    fun atualizar(
+        nome: String,
+        cpf: String,
+        cargo: String,
+    ): Funcionario =
+        this.copy(
+            nome = nome,
+            cpf = CPF(cpf),
+            cargo = Cargo.fromName(cargo),
+        )
 }
