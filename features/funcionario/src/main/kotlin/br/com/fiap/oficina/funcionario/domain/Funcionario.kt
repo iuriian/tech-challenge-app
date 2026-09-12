@@ -1,34 +1,40 @@
 package br.com.fiap.oficina.funcionario.domain
 
-internal class Funcionario(
+import java.util.UUID
+
+class Funcionario private constructor(
     val id: FuncionarioId,
     val nome: String,
     val cpf: CPF,
     val cargo: Cargo,
 ) {
+    init {
+        require(nome.isNotBlank()) { "Nome não pode ser vazio" }
+    }
+
     companion object {
         fun criar(
             nome: String,
-            cpf: CPF,
+            cpf: String,
             cargo: String,
         ): Funcionario =
             Funcionario(
                 id = FuncionarioId.generate(),
                 nome = nome,
-                cpf = cpf,
+                cpf = CPF(cpf),
                 cargo = Cargo.fromName(cargo),
             )
 
         fun reconstruir(
-            id: FuncionarioId,
+            id: String,
             nome: String,
-            cpf: CPF,
+            cpf: String,
             cargo: String,
         ): Funcionario =
             Funcionario(
-                id = id,
+                id = FuncionarioId.toUUID(id),
                 nome = nome,
-                cpf = cpf,
+                cpf = CPF(cpf),
                 cargo = Cargo.fromName(cargo),
             )
     }

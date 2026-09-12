@@ -19,6 +19,6 @@ data class FuncionarioId(
     companion object {
         fun generate(): FuncionarioId = FuncionarioId(newId())
 
-        fun from(uuid: UUID): FuncionarioId = FuncionarioId(uuid)
+        fun toUUID(uuid: String): FuncionarioId = FuncionarioId(UUID.fromString(uuid))
     }
 }

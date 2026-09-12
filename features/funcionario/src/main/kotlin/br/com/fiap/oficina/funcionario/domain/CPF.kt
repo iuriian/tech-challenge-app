@@ -7,4 +7,9 @@ sealed class Document {
 
 data class CPF(
     override val value: String,
-) : Document()
+) : Document() {
+    init {
+        require(value.isNotBlank()) { "CPF não pode ser vazio" }
+        require(value.length == 11) { "CPF deve conter 11 dígitos" }
+    }
+}
