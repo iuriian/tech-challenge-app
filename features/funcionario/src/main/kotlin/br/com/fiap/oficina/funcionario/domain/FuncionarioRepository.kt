@@ -14,7 +14,5 @@ internal interface FuncionarioRepository {
 
     fun buscarPorNome(nome: String): Funcionario?
 
-    fun editar(funcionario: Funcionario): Funcionario
-
     fun deletar(id: FuncionarioId)
 }

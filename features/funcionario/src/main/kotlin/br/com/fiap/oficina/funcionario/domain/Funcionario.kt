@@ -1,7 +1,5 @@
 package br.com.fiap.oficina.funcionario.domain
 
-import java.util.UUID
-
 data class Funcionario private constructor(
     val id: FuncionarioId,
     val nome: String,

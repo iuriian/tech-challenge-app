@@ -1,6 +1,5 @@
 package br.com.fiap.oficina.funcionario.domain
 
-// TODO: Mover para módulo compartilhado
 sealed class Document {
     abstract val value: String
 }
@@ -8,8 +7,10 @@ sealed class Document {
 data class CPF(
     override val value: String,
 ) : Document() {
+    private val minLength = 11
+
     init {
         require(value.isNotBlank()) { "CPF não pode ser vazio" }
-        require(value.length == 11) { "CPF deve conter 11 dígitos" }
+        require(value.length == minLength) { "CPF deve conter $minLength dígitos" }
     }
 }

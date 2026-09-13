@@ -2,7 +2,6 @@ package br.com.fiap.oficina.funcionario.domain
 
 import java.util.UUID
 
-// TODO: mover para o módulo compartilhado
 sealed class AggregateId {
     abstract val value: UUID
 
@@ -10,7 +9,7 @@ sealed class AggregateId {
         fun newId(): UUID = UUID.randomUUID()
     }
 
-    override fun toString(): String = value.toString()
+    final override fun toString(): String = value.toString()
 }
 
 data class FuncionarioId(
