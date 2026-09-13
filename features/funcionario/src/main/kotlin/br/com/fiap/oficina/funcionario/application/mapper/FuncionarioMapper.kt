@@ -25,7 +25,7 @@ class FuncionarioMapper {
 
     fun toResponse(funcionario: Funcionario): FuncionarioResponse =
         FuncionarioResponse(
-            id = funcionario.id.value.toString(),
+            id = funcionario.id.toString(),
             nome = funcionario.nome,
             cargoDescricao = funcionario.cargo.descricao,
             cpf = funcionario.cpf.value,

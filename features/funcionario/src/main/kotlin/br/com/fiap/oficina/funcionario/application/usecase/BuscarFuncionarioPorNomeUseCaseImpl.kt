@@ -11,7 +11,7 @@ internal class BuscarFuncionarioPorNomeUseCaseImpl(
     private val repository: FuncionarioRepository,
     private val mapper: FuncionarioMapper,
 ) : BuscarFuncionarioPorNomeUseCase {
-    override fun execute(nome: String): FuncionarioResponse {
+    override fun executar(nome: String): FuncionarioResponse {
         val funcionario =
             repository.buscarPorNome(nome)
                 ?: throw FuncionarioException("Funcionário com nome $nome não encontrado")

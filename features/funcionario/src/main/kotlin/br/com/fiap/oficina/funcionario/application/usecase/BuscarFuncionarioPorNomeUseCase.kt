@@ -3,5 +3,5 @@ package br.com.fiap.oficina.funcionario.application.usecase
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 
 interface BuscarFuncionarioPorNomeUseCase {
-    fun execute(nome: String): FuncionarioResponse
+    fun executar(nome: String): FuncionarioResponse
 }

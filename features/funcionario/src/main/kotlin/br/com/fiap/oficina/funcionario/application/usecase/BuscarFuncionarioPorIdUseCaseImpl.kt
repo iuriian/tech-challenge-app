@@ -12,10 +12,10 @@ internal class BuscarFuncionarioPorIdUseCaseImpl(
     private val repository: FuncionarioRepository,
     private val mapper: FuncionarioMapper,
 ) : BuscarFuncionarioPorIdUseCase {
-    override fun execute(id: String): FuncionarioResponse {
+    override fun executar(id: String): FuncionarioResponse {
         val funcionario =
             repository.buscarPorId(FuncionarioId.toUUID(id))
-                ?: throw FuncionarioException("Funcionário não com o id $id encontrado!")
+                ?: throw FuncionarioException("Funcionário não encontrado, id: $id")
 
         return mapper.toResponse(funcionario)
     }
