@@ -20,7 +20,7 @@ data class Funcionario private constructor(
                 id = FuncionarioId.generate(),
                 nome = nome,
                 cpf = CPF(cpf),
-                cargo = Cargo.fromName(cargo),
+                cargo = Cargo.fromDescricao(cargo),
             )
 
         fun reconstruir(
@@ -33,7 +33,7 @@ data class Funcionario private constructor(
                 id = FuncionarioId.toUUID(id),
                 nome = nome,
                 cpf = CPF(cpf),
-                cargo = Cargo.fromName(cargo),
+                cargo = Cargo.fromDescricao(cargo),
             )
     }
 
@@ -45,6 +45,6 @@ data class Funcionario private constructor(
         this.copy(
             nome = nome,
             cpf = CPF(cpf),
-            cargo = Cargo.fromName(cargo),
+            cargo = Cargo.fromDescricao(cargo),
         )
 }

@@ -12,10 +12,11 @@ enum class Cargo(
         fun fromId(id: Int): Cargo =
             entries.firstOrNull { it.id == id } ?: throw IllegalArgumentException("Cargo inválido!")
 
-        fun fromName(name: String?): Cargo {
-            require(!name.isNullOrBlank()) { "Cargo não pode ser nulo ou vazio" }
+        fun fromDescricao(descricao: String?): Cargo {
+            require(!descricao.isNullOrBlank()) { "Cargo não pode ser nulo ou vazio" }
 
-            return entries.firstOrNull { it.name == name } ?: throw IllegalArgumentException("Cargo inválido!")
+            return entries.firstOrNull { it.descricao == descricao }
+                ?: throw IllegalArgumentException("Cargo inválido!")
         }
     }
 }
