@@ -1,6 +1,5 @@
 package br.com.fiap.oficina.funcionario.application.usecase
 
-import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
@@ -22,7 +21,7 @@ class ListarFuncionariosUseCaseTest {
     fun givenRegisteredFuncionarios_whenListingFuncionarios_thenReturnAllFuncionarios() {
         val employees =
             List(3) {
-                Funcionario.criar("Nome $it", "0123456789$it", "ATENDENTE")
+                Funcionario.criar("Nome $it", "0123456789$it", "Atendente")
             }
 
         every { repositoryMock.listarTodos() } returns employees

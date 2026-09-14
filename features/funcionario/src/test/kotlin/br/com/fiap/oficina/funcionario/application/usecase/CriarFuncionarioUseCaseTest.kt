@@ -26,7 +26,7 @@ class CriarFuncionarioUseCaseTest {
         val request =
             FuncionarioRequest(
                 nome = "João Silva",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = "12345678900",
             )
 
@@ -66,7 +66,7 @@ class CriarFuncionarioUseCaseTest {
         val request =
             FuncionarioRequest(
                 nome = "Maria Santos",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = "98765432100",
             )
 
@@ -122,7 +122,7 @@ class CriarFuncionarioUseCaseTest {
         val request =
             FuncionarioRequest(
                 nome = "Ana Oliveira",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = "55566677788",
             )
 

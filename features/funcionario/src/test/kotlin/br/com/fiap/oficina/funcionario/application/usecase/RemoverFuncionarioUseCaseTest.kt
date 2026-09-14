@@ -30,7 +30,7 @@ class RemoverFuncionarioUseCaseTest {
                 id = id,
                 nome = "Nome",
                 cpf = "01234567890",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
             )
 
         every { repositoryMock.buscarPorId(funcionarioId) } returns funcionario

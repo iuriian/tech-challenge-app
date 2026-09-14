@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import java.util.UUID
 import kotlin.test.assertFailsWith
 
 @DisplayName("Mapper - Funcionário")
@@ -15,12 +14,12 @@ class FuncionarioMapperTest {
     private val mapper = FuncionarioMapper()
 
     @Test
-    @DisplayName("Dado request sem id, quando converter para domínio, então deve criar um novo funcionário")
-    fun givenRequestWithoutId_whenConvertingToDomain_thenCreateNewFuncionario() {
+    @DisplayName("Dado request válido, quando converter para domínio, então deve criar um novo funcionário")
+    fun givenValidRequest_whenConvertingToDomain_thenCreateNewFuncionario() {
         val request =
             FuncionarioRequest(
                 nome = "João Silva",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_VALIDO,
             )
 
@@ -29,25 +28,6 @@ class FuncionarioMapperTest {
         assertNotNull(funcionario.id.value)
         assertEquals("João Silva", funcionario.nome)
         assertEquals(Cargo.MECANICO, funcionario.cargo)
-        assertEquals(CPF_VALIDO, funcionario.cpf.value)
-    }
-
-    @Test
-    @DisplayName("Dado request com id, quando converter para domínio, então deve reconstruir preservando o id")
-    fun givenRequestWithId_whenConvertingToDomain_thenReconstructPreservingId() {
-        val request =
-            FuncionarioRequest(
-                id = ID_VALIDO,
-                nome = "Maria Souza",
-                cargo = "ATENDENTE",
-                cpf = CPF_VALIDO,
-            )
-
-        val funcionario = mapper.toDomain(request)
-
-        assertEquals(UUID.fromString(ID_VALIDO), funcionario.id.value)
-        assertEquals("Maria Souza", funcionario.nome)
-        assertEquals(Cargo.ATENDENTE, funcionario.cargo)
         assertEquals(CPF_VALIDO, funcionario.cpf.value)
     }
 
@@ -75,7 +55,7 @@ class FuncionarioMapperTest {
         val request =
             FuncionarioRequest(
                 nome = "João Silva",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = "123",
             )
 
@@ -94,7 +74,7 @@ class FuncionarioMapperTest {
             Funcionario.reconstruir(
                 id = ID_VALIDO,
                 nome = "Maria Souza",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_VALIDO,
             )
 
@@ -113,7 +93,7 @@ class FuncionarioMapperTest {
             Funcionario.reconstruir(
                 id = ID_VALIDO,
                 nome = "João Silva",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = CPF_VALIDO,
             )
 
@@ -123,19 +103,17 @@ class FuncionarioMapperTest {
     }
 
     @Test
-    @DisplayName("Dado um request com id, quando converter ida e volta, então deve preservar os dados")
-    fun givenRequestWithId_whenConvertingRoundTrip_thenPreserveData() {
+    @DisplayName("Dado um request válido, quando converter ida e volta, então deve preservar os dados")
+    fun givenValidRequest_whenConvertingRoundTrip_thenPreserveData() {
         val request =
             FuncionarioRequest(
-                id = ID_VALIDO,
                 nome = "Maria Souza",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = CPF_VALIDO,
             )
 
         val response = mapper.toResponse(mapper.toDomain(request))
 
-        assertEquals(request.id, response.id)
         assertEquals(request.nome, response.nome)
         assertEquals(request.cpf, response.cpf)
         assertEquals(Cargo.ATENDENTE.descricao, response.cargoDescricao)

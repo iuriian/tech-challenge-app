@@ -15,7 +15,7 @@ class FuncionarioTest {
         val funcionario =
             Funcionario.criar(
                 nome = "João",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = "01234567890",
             )
 
@@ -31,13 +31,13 @@ class FuncionarioTest {
         val f1 =
             Funcionario.criar(
                 nome = "A",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = "01234567890",
             )
         val f2 =
             Funcionario.criar(
                 nome = "B",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = "01234567891",
             )
 
@@ -52,7 +52,7 @@ class FuncionarioTest {
             Funcionario.reconstruir(
                 id = uuid,
                 nome = "Maria",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = "01234567890",
             )
 
@@ -65,7 +65,7 @@ class FuncionarioTest {
     @DisplayName("Dado um ID inválido, quando reconstruir funcionário, então deve lançar exceção")
     fun givenInvalidId_whenReconstructingFuncionario_thenShouldThrowException() {
         assertThrows(IllegalArgumentException::class.java) {
-            Funcionario.reconstruir(id = "invalid-uuid", nome = "X", cargo = "ATENDENTE", cpf = "01234567890")
+            Funcionario.reconstruir(id = "invalid-uuid", nome = "X", cargo = "Atendente", cpf = "01234567890")
         }
     }
 
@@ -91,7 +91,7 @@ class FuncionarioTest {
     fun givenBlankNome_whenCreatingFuncionario_thenShouldThrowException() {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
-                Funcionario.criar(nome = "   ", cargo = "ATENDENTE", cpf = "01234567890")
+                Funcionario.criar(nome = "   ", cargo = "Atendente", cpf = "01234567890")
             }
 
         assertEquals("Nome não pode ser vazio", exception.message)
@@ -103,14 +103,14 @@ class FuncionarioTest {
         val funcionario =
             Funcionario.criar(
                 nome = "João",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = "01234567890",
             )
 
         val atualizado =
             funcionario.atualizar(
                 nome = "João Silva",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = "01234567891",
             )
 

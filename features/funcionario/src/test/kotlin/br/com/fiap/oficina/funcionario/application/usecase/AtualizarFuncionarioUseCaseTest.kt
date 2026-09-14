@@ -27,9 +27,8 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenValidData_whenUpdateFuncionario_thenReturnUpdatedFuncionario() {
         val request =
             FuncionarioRequest(
-                id = ID_EXISTENTE,
                 nome = "Test atualizado",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
@@ -41,7 +40,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorCpf(any()) } returns funcionario
         every { repositoryMock.salvar(capture(salvo)) } returns funcionario
 
-        val resultado = usecase.executar(request)
+        val resultado = usecase.executar(ID_EXISTENTE, request)
 
         assertNotNull(resultado)
         assertEquals(funcionario.id, salvo.captured.id)
@@ -60,9 +59,8 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenUnchangedCpf_whenUpdateFuncionario_thenNotSearchByCpf() {
         val request =
             FuncionarioRequest(
-                id = ID_EXISTENTE,
                 nome = "Test atualizado",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_EXISTENTE,
             )
 
@@ -73,7 +71,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorId(any()) } returns funcionario
         every { repositoryMock.salvar(capture(salvo)) } returns funcionario
 
-        val resultado = usecase.executar(request)
+        val resultado = usecase.executar(ID_EXISTENTE, request)
 
         assertNotNull(resultado)
         assertEquals("Test atualizado", salvo.captured.nome)
@@ -89,9 +87,8 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenAvailableCpf_whenUpdateFuncionario_thenSaveNewCpf() {
         val request =
             FuncionarioRequest(
-                id = ID_EXISTENTE,
                 nome = "Test",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
                 cpf = CPF_NOVO,
             )
 
@@ -103,7 +100,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorCpf(request.cpf) } returns null
         every { repositoryMock.salvar(capture(salvo)) } returns funcionario
 
-        val resultado = usecase.executar(request)
+        val resultado = usecase.executar(ID_EXISTENTE, request)
 
         assertNotNull(resultado)
         assertEquals(CPF_NOVO, salvo.captured.cpf.value)
@@ -119,13 +116,13 @@ class AtualizarFuncionarioUseCaseTest {
         val request =
             FuncionarioRequest(
                 nome = "Test",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
         val exception =
             assertFailsWith<FuncionarioException> {
-                usecase.executar(request)
+                usecase.executar("", request)
             }
 
         assertEquals("Id é obrigatório!", exception.message)
@@ -139,14 +136,13 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenMalformedId_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
-                id = "nao-e-um-uuid",
                 nome = "Test",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
         assertFailsWith<IllegalArgumentException> {
-            usecase.executar(request)
+            usecase.executar("nao-e-um-uuid", request)
         }
 
         verify(exactly = 0) { repositoryMock.buscarPorId(any()) }
@@ -158,9 +154,8 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenDataWithNonExistentId_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
-                id = ID_EXISTENTE,
                 nome = "Test",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
@@ -168,7 +163,7 @@ class AtualizarFuncionarioUseCaseTest {
 
         val exception =
             assertFailsWith<FuncionarioException> {
-                usecase.executar(request)
+                usecase.executar(ID_EXISTENTE, request)
             }
 
         assertEquals("Funcionário não encontrado!", exception.message)
@@ -183,9 +178,8 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenDataWithExistingCpf_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
-                id = ID_EXISTENTE,
                 nome = "Test atualizado",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
@@ -193,7 +187,7 @@ class AtualizarFuncionarioUseCaseTest {
             Funcionario.reconstruir(
                 id = "00000000-0000-0000-0000-000000000200",
                 nome = "Test Existente",
-                cargo = "MECANICO",
+                cargo = "Mecânico",
                 cpf = CPF_NOVO,
             )
 
@@ -202,7 +196,7 @@ class AtualizarFuncionarioUseCaseTest {
 
         val exception =
             assertFailsWith<FuncionarioException> {
-                usecase.executar(request)
+                usecase.executar(ID_EXISTENTE, request)
             }
 
         assertEquals("CPF já cadastrado!", exception.message)
@@ -216,7 +210,7 @@ class AtualizarFuncionarioUseCaseTest {
         Funcionario.reconstruir(
             id = ID_EXISTENTE,
             nome = "Test",
-            cargo = "ATENDENTE",
+            cargo = "Atendente",
             cpf = CPF_EXISTENTE,
         )
 

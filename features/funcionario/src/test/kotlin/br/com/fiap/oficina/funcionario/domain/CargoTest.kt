@@ -26,40 +26,40 @@ class CargoTest {
     }
 
     @Test
-    @DisplayName("Dado um nome existente, quando buscar cargo por nome, então deve retornar o cargo")
-    fun givenExistingName_whenFindingCargoByName_thenReturnCargo() {
-        assertEquals(Cargo.ATENDENTE, Cargo.fromName("ATENDENTE"))
-        assertEquals(Cargo.MECANICO, Cargo.fromName("MECANICO"))
+    @DisplayName("Dado uma descrição existente, quando buscar cargo por descrição, então deve retornar o cargo")
+    fun givenExistingDescricao_whenFindingCargoByDescricao_thenReturnCargo() {
+        assertEquals(Cargo.ATENDENTE, Cargo.fromDescricao("Atendente"))
+        assertEquals(Cargo.MECANICO, Cargo.fromDescricao("Mecânico"))
     }
 
     @Test
-    @DisplayName("Dado um nome nulo, quando buscar cargo por nome, então deve lançar exceção")
-    fun givenNullName_whenFindingCargoByName_thenThrowException() {
+    @DisplayName("Dado uma descrição nula, quando buscar cargo por descrição, então deve lançar exceção")
+    fun givenNullDescricao_whenFindingCargoByDescricao_thenThrowException() {
         val exception =
             assertFailsWith<IllegalArgumentException> {
-                Cargo.fromName(null)
+                Cargo.fromDescricao(null)
             }
 
         assertEquals("Cargo não pode ser nulo ou vazio", exception.message)
     }
 
     @Test
-    @DisplayName("Dado um nome em branco, quando buscar cargo por nome, então deve lançar exceção")
-    fun givenBlankName_whenFindingCargoByName_thenThrowException() {
+    @DisplayName("Dado uma descrição em branco, quando buscar cargo por descrição, então deve lançar exceção")
+    fun givenBlankDescricao_whenFindingCargoByDescricao_thenThrowException() {
         val exception =
             assertFailsWith<IllegalArgumentException> {
-                Cargo.fromName("   ")
+                Cargo.fromDescricao("   ")
             }
 
         assertEquals("Cargo não pode ser nulo ou vazio", exception.message)
     }
 
     @Test
-    @DisplayName("Dado um nome inexistente, quando buscar cargo por nome, então deve lançar exceção")
-    fun givenNonExistentName_whenFindingCargoByName_thenThrowException() {
+    @DisplayName("Dado uma descrição inexistente, quando buscar cargo por descrição, então deve lançar exceção")
+    fun givenNonExistentDescricao_whenFindingCargoByDescricao_thenThrowException() {
         val exception =
             assertFailsWith<IllegalArgumentException> {
-                Cargo.fromName("GERENTE")
+                Cargo.fromDescricao("GERENTE")
             }
 
         assertEquals("Cargo inválido!", exception.message)

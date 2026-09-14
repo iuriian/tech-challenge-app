@@ -29,7 +29,7 @@ class BuscarFuncionarioPorIdUseCaseTest {
                 id = id,
                 nome = "Nome",
                 cpf = "01234567890",
-                cargo = "ATENDENTE",
+                cargo = "Atendente",
             )
 
         val response =
