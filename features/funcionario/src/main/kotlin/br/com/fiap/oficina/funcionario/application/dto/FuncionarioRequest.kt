@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotBlank
 import java.util.UUID
 
 data class FuncionarioRequest(
-    val id: String? = null,
     @field:NotBlank
     val nome: String,
     @field:NotBlank
