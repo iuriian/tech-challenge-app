@@ -14,28 +14,14 @@ internal class FuncionarioRepositoryImpl(
         return mapper.toDomain(resultado)
     }
 
-    override fun listarTodos(): List<Funcionario> = repository.findAll().map { mapper.toDomain(it) }
+    override fun listarTodos(): List<Funcionario> = repository.findAll().map(mapper::toDomain)
 
     override fun buscarPorId(id: FuncionarioId): Funcionario? =
-        repository.findById(id.value).map { mapper::toDomain }.orElse(null)
+        repository.findById(id.value).map(mapper::toDomain).orElse(null)
 
-    override fun buscarPorCpf(cpf: String): Funcionario? {
-        val resultado = repository.findByCpf(cpf)
+    override fun buscarPorCpf(cpf: String): Funcionario? = repository.findByCpf(cpf)?.let { mapper.toDomain(it) }
 
-        if (resultado != null) {
-            return mapper.toDomain(resultado)
-        }
-        return null
-    }
-
-    override fun buscarPorNome(nome: String): Funcionario? {
-        val resultado = repository.findByNome(nome)
-
-        if (resultado != null) {
-            return mapper.toDomain(resultado)
-        }
-        return null
-    }
+    override fun buscarPorNome(nome: String): Funcionario? = repository.findByNome(nome)?.let { mapper.toDomain(it) }
 
     override fun deletar(id: FuncionarioId) {
         repository.deleteById(id.value)
