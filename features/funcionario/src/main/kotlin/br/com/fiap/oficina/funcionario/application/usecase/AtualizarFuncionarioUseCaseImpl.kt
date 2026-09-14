@@ -14,8 +14,11 @@ internal class AtualizarFuncionarioUseCaseImpl(
     private val repository: FuncionarioRepository,
     private val mapper: FuncionarioMapper,
 ) : AtualizarFuncionarioUseCase {
-    override fun executar(request: FuncionarioRequest): FuncionarioResponse {
-        val id = request.id ?: throw FuncionarioException("Id é obrigatório!")
+    override fun executar(
+        id: String,
+        request: FuncionarioRequest,
+    ): FuncionarioResponse {
+        require(id.isNotBlank()) { throw FuncionarioException("Id é obrigatório!") }
 
         val funcionario =
             repository.buscarPorId(FuncionarioId.toUUID(id))

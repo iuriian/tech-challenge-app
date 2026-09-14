@@ -4,5 +4,8 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 
 interface AtualizarFuncionarioUseCase {
-    fun executar(request: FuncionarioRequest): FuncionarioResponse
+    fun executar(
+        id: String,
+        request: FuncionarioRequest,
+    ): FuncionarioResponse
 }
