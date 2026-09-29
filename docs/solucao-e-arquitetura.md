@@ -415,5 +415,4 @@ Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 | [cd.md](cd.md) | Detalhamento da pipeline de entrega, rollback e troubleshooting |
 | [adr-001.md](adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway sob Onion Architecture |
 | [linguagem-ubiqua.md](linguagem-ubiqua.md) | Glossário do domínio |
-| [relatorio-vulnerabilidades.md](relatorio-vulnerabilidades.md) | Levantamento de vulnerabilidades das dependências |
 | [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`../terraform/README.md`](../terraform/README.md) | Manifests, ambiente local em Kubernetes e infraestrutura |

@@ -184,5 +184,4 @@ executam:
   `check`. Fundir `Unit Test` com `Coverage` e trocar o `build` por `assemble` deixa
   uma execução só.
 - **Sem verificação de dependências.** Não há checagem de CVE nas dependências
-  (`dependency-check`, Dependabot ou Trivy na imagem). O
-  [relatório de vulnerabilidades](relatorio-vulnerabilidades.md) é manual.
+  (`dependency-check`, Dependabot ou Trivy na imagem).
