@@ -171,10 +171,8 @@ class FuncionarioRepositoryIntegrationTest {
         entityManager.clear()
     }
 
-    private fun novoFuncionarioJPA(
-        nome: String,
-        cpf: String,
-    ) = FuncionarioJPA(id = FuncionarioId.generate().value, nome = nome, cargo = Cargo.ATENDENTE, cpf = cpf)
+    private fun novoFuncionarioJPA(nome: String, cpf: String) =
+        FuncionarioJPA(id = FuncionarioId.generate().value, nome = nome, cargo = Cargo.ATENDENTE, cpf = cpf)
 
     companion object {
         private const val CPF_1 = "01234567890"

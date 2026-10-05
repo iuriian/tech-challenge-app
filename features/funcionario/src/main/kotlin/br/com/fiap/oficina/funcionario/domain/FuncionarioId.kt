@@ -12,9 +12,7 @@ sealed class AggregateId {
     final override fun toString(): String = value.toString()
 }
 
-data class FuncionarioId(
-    override val value: UUID,
-) : AggregateId() {
+data class FuncionarioId(override val value: UUID) : AggregateId() {
     companion object {
         fun generate(): FuncionarioId = FuncionarioId(newId())
 

@@ -206,13 +206,12 @@ class AtualizarFuncionarioUseCaseTest {
         verify(exactly = 0) { repositoryMock.salvar(any()) }
     }
 
-    private fun funcionarioExistente() =
-        Funcionario.reconstruir(
-            id = ID_EXISTENTE,
-            nome = "Test",
-            cargo = "Atendente",
-            cpf = CPF_EXISTENTE,
-        )
+    private fun funcionarioExistente() = Funcionario.reconstruir(
+        id = ID_EXISTENTE,
+        nome = "Test",
+        cargo = "Atendente",
+        cpf = CPF_EXISTENTE,
+    )
 
     private companion object {
         const val ID_EXISTENTE = "00000000-0000-0000-0000-000000000100"

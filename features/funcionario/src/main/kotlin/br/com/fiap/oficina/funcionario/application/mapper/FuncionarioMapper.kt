@@ -7,18 +7,16 @@ import org.springframework.stereotype.Component
 
 @Component
 class FuncionarioMapper {
-    fun toDomain(request: FuncionarioRequest): Funcionario =
-        Funcionario.criar(
-            nome = request.nome,
-            cargo = request.cargo,
-            cpf = request.cpf,
-        )
+    fun toDomain(request: FuncionarioRequest): Funcionario = Funcionario.criar(
+        nome = request.nome,
+        cargo = request.cargo,
+        cpf = request.cpf,
+    )
 
-    fun toResponse(funcionario: Funcionario): FuncionarioResponse =
-        FuncionarioResponse(
-            id = funcionario.id.toString(),
-            nome = funcionario.nome,
-            cargoDescricao = funcionario.cargo.descricao,
-            cpf = funcionario.cpf.value,
-        )
+    fun toResponse(funcionario: Funcionario): FuncionarioResponse = FuncionarioResponse(
+        id = funcionario.id.toString(),
+        nome = funcionario.nome,
+        cargoDescricao = funcionario.cargo.descricao,
+        cpf = funcionario.cpf.value,
+    )
 }

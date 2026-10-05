@@ -171,16 +171,11 @@ class FuncionarioRepositoryImplTest {
         verify(exactly = 1) { jpaRepositoryMock.deleteById(UUID.fromString(ID_1)) }
     }
 
-    private fun funcionario(
-        id: String = ID_1,
-        nome: String = NOME,
-        cpf: String = CPF,
-    ) = Funcionario.reconstruir(id = id, nome = nome, cpf = cpf, cargo = Cargo.MECANICO.descricao)
+    private fun funcionario(id: String = ID_1, nome: String = NOME, cpf: String = CPF) =
+        Funcionario.reconstruir(id = id, nome = nome, cpf = cpf, cargo = Cargo.MECANICO.descricao)
 
-    private fun funcionarioJPA(
-        id: String = ID_1,
-        cpf: String = CPF,
-    ) = FuncionarioJPA(id = UUID.fromString(id), nome = NOME, cargo = Cargo.MECANICO, cpf = cpf)
+    private fun funcionarioJPA(id: String = ID_1, cpf: String = CPF) =
+        FuncionarioJPA(id = UUID.fromString(id), nome = NOME, cargo = Cargo.MECANICO, cpf = cpf)
 
     private companion object {
         const val ID_1 = "00000000-0000-0000-0000-000000000100"

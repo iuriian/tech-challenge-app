@@ -4,9 +4,7 @@ sealed class Document {
     abstract val value: String
 }
 
-data class CPF(
-    override val value: String,
-) : Document() {
+data class CPF(override val value: String) : Document() {
     private val minLength = 11
 
     init {

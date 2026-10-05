@@ -6,9 +6,8 @@ import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class RemoverFuncionarioUseCaseImpl(
-    private val repository: FuncionarioRepository,
-) : RemoverFuncionarioUseCase {
+internal class RemoverFuncionarioUseCaseImpl(private val repository: FuncionarioRepository) :
+    RemoverFuncionarioUseCase {
     override fun executar(id: String) {
         val funcionario =
             repository.buscarPorId(FuncionarioId.toUUID(id))
