@@ -56,23 +56,50 @@ runs:
             const result = new Map();
             const fileRegex = /^\s{2,}(?:\.[/\\])?([\w./\\-]+\.(?:kt|kts|java))\s*$/;
             const hunkRegex = /^\s*@@\s+-(\d+)/;
+            const applyRegex = /Run\s+'gradlew(?:\.bat)?\s+:(.*?)spotlessApply'/;
+
+            let pending = new Map();
             let current = null;
 
+            function flush(prefix) {
+              for (const [file, lines] of pending) {
+                const full = prefix ? prefix + '/' + file : file;
+                if (!result.has(full)) {
+                  result.set(full, new Set());
+                }
+                for (const line of lines) {
+                  result.get(full).add(line);
+                }
+              }
+              pending = new Map();
+              current = null;
+            }
+
             for (const raw of log.split(/\r?\n/)) {
+              const applyMatch = raw.match(applyRegex);
+              if (applyMatch) {
+                // ':spotlessApply' -> ''
+                // ':features:funcionario:spotlessApply' -> 'features/funcionario'
+                flush(applyMatch[1].split(':').filter(Boolean).join('/'));
+                continue;
+              }
+
               const fileMatch = raw.match(fileRegex);
               if (fileMatch) {
                 current = fileMatch[1].replace(/\\/g, '/');
-                if (!result.has(current)) {
-                  result.set(current, new Set());
+                if (!pending.has(current)) {
+                  pending.set(current, new Set());
                 }
                 continue;
               }
 
               const hunkMatch = raw.match(hunkRegex);
               if (hunkMatch && current) {
-                result.get(current).add(parseInt(hunkMatch[1], 10));
+                pending.get(current).add(parseInt(hunkMatch[1], 10));
               }
             }
+
+            flush('');
 
             if (result.size === 0) {
               const legacy = [
