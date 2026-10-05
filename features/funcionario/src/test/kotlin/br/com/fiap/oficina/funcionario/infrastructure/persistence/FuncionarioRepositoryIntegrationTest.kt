@@ -166,7 +166,6 @@ class FuncionarioRepositoryIntegrationTest {
         }
     }
 
-    /** Envia as operações pendentes ao banco e limpa o contexto, forçando novas leituras do PostgreSQL. */
     private fun sincronizar() {
         entityManager.flush()
         entityManager.clear()
@@ -184,6 +183,6 @@ class FuncionarioRepositoryIntegrationTest {
         @JvmStatic
         @ServiceConnection
         val postgres: PostgreSQLContainer<*> =
-            PostgreSQLContainer("postgres:16-alpine").apply { start() }
+            PostgreSQLContainer("postgres:16-alpine")
     }
 }
