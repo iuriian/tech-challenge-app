@@ -85,4 +85,38 @@ class FuncionarioTest {
             Funcionario.reconstruir(id = uuid, nome = "Bad", cargo = "INVALID", cpf = "01234567890")
         }
     }
+
+    @Test
+    @DisplayName("Dado um nome em branco, quando criar funcionário, então deve lançar exceção")
+    fun givenBlankNome_whenCreatingFuncionario_thenShouldThrowException() {
+        val exception =
+            assertThrows(IllegalArgumentException::class.java) {
+                Funcionario.criar(nome = "   ", cargo = "ATENDENTE", cpf = "01234567890")
+            }
+
+        assertEquals("Nome não pode ser vazio", exception.message)
+    }
+
+    @Test
+    @DisplayName("Dado um funcionário, quando atualizar os dados, então deve preservar o id")
+    fun givenFuncionario_whenUpdatingData_thenShouldPreserveId() {
+        val funcionario =
+            Funcionario.criar(
+                nome = "João",
+                cargo = "ATENDENTE",
+                cpf = "01234567890",
+            )
+
+        val atualizado =
+            funcionario.atualizar(
+                nome = "João Silva",
+                cargo = "MECANICO",
+                cpf = "01234567891",
+            )
+
+        assertEquals(funcionario.id, atualizado.id)
+        assertEquals("João Silva", atualizado.nome)
+        assertEquals(Cargo.MECANICO, atualizado.cargo)
+        assertEquals("01234567891", atualizado.cpf.value)
+    }
 }

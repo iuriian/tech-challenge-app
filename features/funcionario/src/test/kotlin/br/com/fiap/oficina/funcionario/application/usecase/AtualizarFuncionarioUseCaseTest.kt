@@ -2,11 +2,13 @@ package br.com.fiap.oficina.funcionario.application.usecase
 
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
+import br.com.fiap.oficina.funcionario.domain.Cargo
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -25,40 +27,100 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenValidData_whenUpdateFuncionario_thenReturnUpdatedFuncionario() {
         val request =
             FuncionarioRequest(
-                id = "00000000-0000-0000-0000-000000000100",
+                id = ID_EXISTENTE,
                 nome = "Test atualizado",
                 cargo = "MECANICO",
-                cpf = "01234567891",
+                cpf = CPF_NOVO,
             )
 
-        val funcionario =
-            Funcionario.reconstruir(
-                id = "00000000-0000-0000-0000-000000000100",
-                nome = "Test",
-                cargo = "ATENDENTE",
-                cpf = "01234567890",
-            )
+        val funcionario = funcionarioExistente()
+
+        val salvo = slot<Funcionario>()
 
         every { repositoryMock.buscarPorId(any()) } returns funcionario
         every { repositoryMock.buscarPorCpf(any()) } returns funcionario
+        every { repositoryMock.salvar(capture(salvo)) } returns funcionario
 
-        val result = usecase.executar(request)
+        val resultado = usecase.executar(request)
 
-        assertNotNull(result)
+        assertNotNull(resultado)
+        assertEquals(funcionario.id, salvo.captured.id)
+        assertEquals("Test atualizado", salvo.captured.nome)
+        assertEquals(CPF_NOVO, salvo.captured.cpf.value)
+        assertEquals(Cargo.MECANICO, salvo.captured.cargo)
 
         verify(exactly = 1) { repositoryMock.buscarPorId(any()) }
         verify(exactly = 1) { repositoryMock.buscarPorCpf(any()) }
+        verify(exactly = 1) { repositoryMock.salvar(any()) }
+        verify(exactly = 1) { mapperMock.toResponse(any()) }
+    }
+
+    @Test
+    @DisplayName("Dado cpf inalterado, quando atualizar funcionario, então não deve consultar o cpf")
+    fun givenUnchangedCpf_whenUpdateFuncionario_thenNotSearchByCpf() {
+        val request =
+            FuncionarioRequest(
+                id = ID_EXISTENTE,
+                nome = "Test atualizado",
+                cargo = "MECANICO",
+                cpf = CPF_EXISTENTE,
+            )
+
+        val funcionario = funcionarioExistente()
+
+        val salvo = slot<Funcionario>()
+
+        every { repositoryMock.buscarPorId(any()) } returns funcionario
+        every { repositoryMock.salvar(capture(salvo)) } returns funcionario
+
+        val resultado = usecase.executar(request)
+
+        assertNotNull(resultado)
+        assertEquals("Test atualizado", salvo.captured.nome)
+        assertEquals(CPF_EXISTENTE, salvo.captured.cpf.value)
+
+        verify(exactly = 1) { repositoryMock.buscarPorId(any()) }
+        verify(exactly = 0) { repositoryMock.buscarPorCpf(any()) }
+        verify(exactly = 1) { repositoryMock.salvar(any()) }
+    }
+
+    @Test
+    @DisplayName("Dado cpf alterado para um disponível, quando atualizar funcionario, então deve salvar o novo cpf")
+    fun givenAvailableCpf_whenUpdateFuncionario_thenSaveNewCpf() {
+        val request =
+            FuncionarioRequest(
+                id = ID_EXISTENTE,
+                nome = "Test",
+                cargo = "ATENDENTE",
+                cpf = CPF_NOVO,
+            )
+
+        val funcionario = funcionarioExistente()
+
+        val salvo = slot<Funcionario>()
+
+        every { repositoryMock.buscarPorId(any()) } returns funcionario
+        every { repositoryMock.buscarPorCpf(request.cpf) } returns null
+        every { repositoryMock.salvar(capture(salvo)) } returns funcionario
+
+        val resultado = usecase.executar(request)
+
+        assertNotNull(resultado)
+        assertEquals(CPF_NOVO, salvo.captured.cpf.value)
+
+        verify(exactly = 1) { repositoryMock.buscarPorId(any()) }
+        verify(exactly = 1) { repositoryMock.buscarPorCpf(request.cpf) }
         verify(exactly = 1) { repositoryMock.salvar(any()) }
     }
 
     @Test
     @DisplayName("Dado dados sem id, quando atualizar funcionario, então deve lançar exceção")
-    fun givenDataNotContainId_whenUpdateFuncionario_thenThrowException() {
+    fun givenDataWithoutId_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
                 nome = "Test",
                 cargo = "MECANICO",
-                cpf = "01234567891",
+                cpf = CPF_NOVO,
             )
 
         val exception =
@@ -69,6 +131,26 @@ class AtualizarFuncionarioUseCaseTest {
         assertEquals("Id é obrigatório!", exception.message)
 
         verify(exactly = 0) { repositoryMock.buscarPorId(any()) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
+    }
+
+    @Test
+    @DisplayName("Dado id em formato inválido, quando atualizar funcionario, então deve lançar exceção")
+    fun givenMalformedId_whenUpdateFuncionario_thenThrowException() {
+        val request =
+            FuncionarioRequest(
+                id = "nao-e-um-uuid",
+                nome = "Test",
+                cargo = "MECANICO",
+                cpf = CPF_NOVO,
+            )
+
+        assertFailsWith<IllegalArgumentException> {
+            usecase.executar(request)
+        }
+
+        verify(exactly = 0) { repositoryMock.buscarPorId(any()) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
     }
 
     @Test
@@ -76,10 +158,10 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenDataWithNonExistentId_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
-                id = "00000000-0000-0000-0000-000000000100",
+                id = ID_EXISTENTE,
                 nome = "Test",
                 cargo = "MECANICO",
-                cpf = "01234567891",
+                cpf = CPF_NOVO,
             )
 
         every { repositoryMock.buscarPorId(any()) } returns null
@@ -92,6 +174,8 @@ class AtualizarFuncionarioUseCaseTest {
         assertEquals("Funcionário não encontrado!", exception.message)
 
         verify(exactly = 1) { repositoryMock.buscarPorId(any()) }
+        verify(exactly = 0) { repositoryMock.buscarPorCpf(any()) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
     }
 
     @Test
@@ -99,30 +183,22 @@ class AtualizarFuncionarioUseCaseTest {
     fun givenDataWithExistingCpf_whenUpdateFuncionario_thenThrowException() {
         val request =
             FuncionarioRequest(
-                id = "00000000-0000-0000-0000-000000000100",
+                id = ID_EXISTENTE,
                 nome = "Test atualizado",
                 cargo = "MECANICO",
-                cpf = "01234567891",
+                cpf = CPF_NOVO,
             )
 
-        val funcionario =
-            Funcionario.reconstruir(
-                id = "00000000-0000-0000-0000-000000000100",
-                nome = "Test",
-                cargo = "ATENDENTE",
-                cpf = "01234567890",
-            )
-
-        val funcionarioExistente =
+        val outroFuncionario =
             Funcionario.reconstruir(
                 id = "00000000-0000-0000-0000-000000000200",
                 nome = "Test Existente",
                 cargo = "MECANICO",
-                cpf = "01234567891",
+                cpf = CPF_NOVO,
             )
 
-        every { repositoryMock.buscarPorId(any()) } returns funcionario
-        every { repositoryMock.buscarPorCpf(any()) } returns funcionarioExistente
+        every { repositoryMock.buscarPorId(any()) } returns funcionarioExistente()
+        every { repositoryMock.buscarPorCpf(any()) } returns outroFuncionario
 
         val exception =
             assertFailsWith<FuncionarioException> {
@@ -133,5 +209,20 @@ class AtualizarFuncionarioUseCaseTest {
 
         verify(exactly = 1) { repositoryMock.buscarPorId(any()) }
         verify(exactly = 1) { repositoryMock.buscarPorCpf(any()) }
+        verify(exactly = 0) { repositoryMock.salvar(any()) }
+    }
+
+    private fun funcionarioExistente() =
+        Funcionario.reconstruir(
+            id = ID_EXISTENTE,
+            nome = "Test",
+            cargo = "ATENDENTE",
+            cpf = CPF_EXISTENTE,
+        )
+
+    private companion object {
+        const val ID_EXISTENTE = "00000000-0000-0000-0000-000000000100"
+        const val CPF_EXISTENTE = "01234567890"
+        const val CPF_NOVO = "01234567891"
     }
 }
