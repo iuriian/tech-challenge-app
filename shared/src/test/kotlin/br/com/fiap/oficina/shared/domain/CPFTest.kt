@@ -1,11 +1,11 @@
-package br.com.fiap.oficina.funcionario.domain
+package br.com.fiap.oficina.shared.domain
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 
-@DisplayName("Value object - CPF")
+@DisplayName("Shared kernel - CPF")
 class CPFTest {
     @Test
     @DisplayName("Dado um cpf com 11 dígitos, quando criar o cpf, então deve ter sucesso")
@@ -13,6 +13,14 @@ class CPFTest {
         val cpf = CPF("01234567890")
 
         assertEquals("01234567890", cpf.value)
+    }
+
+    @Test
+    @DisplayName("Dado um cpf, quando tratado como documento, então deve expor o valor")
+    fun givenCpf_whenTreatedAsDocument_thenExposeValue() {
+        val documento: Document = CPF("01234567890")
+
+        assertEquals("01234567890", documento.value)
     }
 
     @Test
