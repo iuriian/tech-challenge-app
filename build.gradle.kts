@@ -1,19 +1,9 @@
-import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
-
 plugins {
-    kotlin("jvm") version "2.3.21"
-    kotlin("plugin.spring") version "2.3.21"
-    kotlin("plugin.jpa") version "2.3.21"
-    kotlin("kapt") version "2.3.21"
-
-    id("org.jetbrains.dokka") version "2.2.0"
-    id("org.springframework.boot") version "3.4.0"
-    id("io.spring.dependency-management") version "1.1.6"
-    jacoco
-    id("org.sonarqube") version "7.3.1.8318"
-    id("dev.detekt") version ("2.0.0-alpha.3")
-
-    id("com.diffplug.spotless") version "7.0.2"
+    id("app.kotlin-spring")
+    id("quality.spotless")
+    id("quality.detekt")
+    id("quality.dokka")
+    id("quality.jacoco")
 }
 
 group = "br.com.fiap.oficina"
@@ -21,12 +11,6 @@ version = "0.0.1"
 
 val mapstructVersion = "1.6.3"
 val openapiVersion = "2.8.5"
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
 
 repositories {
     mavenCentral()
@@ -85,167 +69,4 @@ tasks.withType<Test> {
     val dockerApiVersion = System.getenv("API_VERSION") ?: "1.44"
     environment("API_VERSION", dockerApiVersion)
     jvmArgs("-Dapi.version=$dockerApiVersion")
-}
-
-// Jacoco
-val coverageExclusions =
-    listOf(
-        "**/OfficinaApplication*",
-        "**/config/**",
-        "**/dto/**",
-        "**/*Config*",
-    )
-
-tasks.withType<JacocoReportBase>().configureEach {
-    classDirectories.setFrom(
-        files(
-            classDirectories.files.map {
-                fileTree(it) {
-                    exclude(coverageExclusions)
-                }
-            },
-        ),
-    )
-}
-
-val jacocoTestReport =
-    tasks.named<JacocoReport>("jacocoTestReport") {
-        dependsOn(tasks.named<Test>("test"))
-        reports {
-            xml.required.set(true)
-            html.required.set(true)
-        }
-    }
-
-tasks.named<Test>("test") {
-    finalizedBy(jacocoTestReport)
-}
-
-tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-    dependsOn(jacocoTestReport)
-    violationRules {
-        rule {
-            limit {
-                counter = "INSTRUCTION"
-                value = "COVEREDRATIO"
-                minimum = "0.90".toBigDecimal()
-            }
-            limit {
-                counter = "BRANCH"
-                value = "COVEREDRATIO"
-                minimum = "0.90".toBigDecimal()
-            }
-            limit {
-                counter = "LINE"
-                value = "COVEREDRATIO"
-                minimum = "0.90".toBigDecimal()
-            }
-        }
-    }
-}
-
-// tasks.named("check") {
-//    dependsOn("jacocoTestCoverageVerification")
-// }
-
-val dokkaVisibility =
-    setOf(
-        VisibilityModifier.Public,
-        VisibilityModifier.Protected,
-        VisibilityModifier.Private,
-        VisibilityModifier.Package,
-        VisibilityModifier.Internal,
-    )
-
-dokka {
-    dokkaSourceSets.configureEach {
-        documentedVisibilities.set(dokkaVisibility)
-        perPackageOption {
-            matchingRegex.set(".*internal.*")
-            suppress.set(true)
-        }
-    }
-}
-
-configurations.matching { it.name.startsWith("dokka") }.configureEach {
-    resolutionStrategy.eachDependency {
-        if (requested.group.startsWith("com.fasterxml.jackson")) {
-            useVersion("2.15.3")
-        }
-    }
-}
-
-detekt {
-    toolVersion = "2.0.0-alpha.3"
-    config.setFrom("conf/detekt/detekt.yml")
-    source.setFrom("src/main/kotlin")
-    baseline = file("detekt-baseline.xml")
-    failOnSeverity = dev.detekt.gradle.extensions.FailOnSeverity.Warning
-}
-
-tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
-    reports {
-        checkstyle.required.set(true)
-        html.required.set(true)
-    }
-}
-
-sonar {
-    properties {
-        property("sonar.projectKey", "br.com.fiap.oficina:tech-challenge")
-        property("sonar.projectName", "Tech-Challenge")
-        property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
-        property("sonar.login", System.getenv("SONAR_LOGIN") ?: "admin")
-        property("sonar.password", System.getenv("SONAR_PASSWORD") ?: "c0cada")
-        property("sonar.sourceEncoding", "UTF-8")
-        property("sonar.sources", "src/main/kotlin")
-        property("sonar.tests", "src/test/kotlin")
-        property(
-            "sonar.coverage.jacoco.xmlReportPaths",
-            layout.buildDirectory
-                .file("reports/jacoco/test/jacocoTestReport.xml")
-                .get()
-                .asFile.absolutePath,
-        )
-        property("sonar.exclusions", "**/OfficinaApplication.kt,**/config/**,**/dto/**")
-        property("sonar.coverage.exclusions", "**/OfficinaApplication.kt,**/config/**,**/dto/**")
-        property(
-            "sonar.kotlin.detekt.reportPaths",
-            layout.buildDirectory
-                .file("reports/detekt/detekt.xml")
-                .get()
-                .asFile.absolutePath,
-        )
-    }
-}
-
-spotless {
-    kotlin {
-        target("src/**/*.kt")
-        targetExclude("**/build/**")
-
-        ktlint("1.5.0")
-            .editorConfigOverride(
-                mapOf(
-                    "max_line_length" to "120",
-                    "indent_size" to "4",
-                    "ij_kotlin_allow_trailing_comma" to "true",
-                    "ij_kotlin_allow_trailing_comma_on_call_site" to "true",
-                ),
-            )
-
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-
-    kotlinGradle {
-        target("*.gradle.kts")
-        ktlint("1.5.0")
-            .editorConfigOverride(
-                mapOf(
-                    "max_line_length" to "120",
-                ),
-            )
-        endWithNewline()
-    }
 }
