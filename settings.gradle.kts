@@ -8,3 +8,4 @@ plugins {
 rootProject.name = "oficinamecanica"
 
 include("features:funcionario")
+include("features:peca")

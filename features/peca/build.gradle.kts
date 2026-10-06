@@ -1,36 +1,14 @@
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.spring")
-    kotlin("plugin.jpa")
-    id("io.spring.dependency-management")
-}
-
-repositories {
-    mavenCentral()
+    id("app.kotlin-module")
+    id("quality.spotless")
+    id("quality.detekt")
+    id("quality.jacoco")
 }
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("jakarta.validation:jakarta.validation-api")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // Testes unitários
-    testImplementation("org.springframework.boot:spring-boot-starter-test") {
-        exclude(group = "org.mockito", module = "mockito-core")
-    }
-    testImplementation("io.mockk:mockk-jvm:1.14.11")
-    testImplementation(kotlin("test"))
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    // Testes de integração
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:postgresql")
-    testRuntimeOnly("org.postgresql:postgresql")
-}
-
-kotlin {
-    jvmToolchain(21)
-}
-
-tasks.test {
-    useJUnitPlatform()
+    runtimeOnly("org.postgresql:postgresql")
 }
