@@ -4,6 +4,8 @@ plugins {
     id("quality.detekt")
     id("quality.dokka")
     id("quality.jacoco")
+
+    id("jacoco-report-aggregation")
 }
 
 group = "br.com.fiap.oficina"
@@ -17,6 +19,10 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":features:funcionario"))
+
+    jacocoAggregation(project(":features:funcionario"))
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

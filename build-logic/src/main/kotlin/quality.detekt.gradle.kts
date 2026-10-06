@@ -4,8 +4,8 @@ plugins {
 
 detekt {
     toolVersion = "2.0.0-alpha.3"
-    config.setFrom("conf/detekt/detekt.yml")
-    source.setFrom("src/main/kotlin")
+    config.setFrom(isolated.rootProject.projectDirectory.file("conf/detekt/detekt.yml"))
+    source.setFrom(layout.projectDirectory.dir("src/main/kotlin"))
     baseline = file("detekt-baseline.xml")
     failOnSeverity = dev.detekt.gradle.extensions.FailOnSeverity.Warning
 }

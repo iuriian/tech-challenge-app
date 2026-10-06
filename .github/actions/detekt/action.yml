@@ -66,34 +66,58 @@ runs:
             return relative && !relative.startsWith('..') ? relative : filePath;
           }
           
-          function readXmlReport() {
-            const found = [];
-            const reportPath = path.join(workspace, 'build/reports/detekt/detekt.xml');
+          function findXmlReports() {
+            const reports = [];
           
-            if (!fs.existsSync(reportPath)) {
-              return found;
+            const rootReport = path.join(workspace, 'build/reports/detekt/detekt.xml');
+            if (fs.existsSync(rootReport)) {
+              reports.push(rootReport);
             }
           
-            const xml = fs.readFileSync(reportPath, 'utf8');
-            const fileBlocks = xml.split('<file ').slice(1);
-          
-            for (const block of fileBlocks) {
-              const nameMatch = block.match(/name="([^"]*)"/);
-              if (!nameMatch) {
-                continue;
+            const featuresDir = path.join(workspace, 'features');
+            if (fs.existsSync(featuresDir)) {
+              for (const entry of fs.readdirSync(featuresDir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) {
+                  continue;
+                }
+                const moduleReport = path.join(
+                  featuresDir, entry.name, 'build/reports/detekt/detekt.xml'
+                );
+                if (fs.existsSync(moduleReport)) {
+                  reports.push(moduleReport);
+                }
               }
-              const file = toRelative(unescapeXml(nameMatch[1]));
-              const errorRegex = /<error\b([^>]*)\/?>/g;
-              let errorMatch;
+            }
           
-              while ((errorMatch = errorRegex.exec(block)) !== null) {
-                const attrs = errorMatch[1];
-                const line = (attrs.match(/line="([^"]*)"/) || [])[1] || '?';
-                const message = unescapeXml((attrs.match(/message="([^"]*)"/) || [])[1] || '');
-                const source = (attrs.match(/source="([^"]*)"/) || [])[1] || '';
-                const rule = source.split('.').pop() || 'Detekt';
-                found.push({ file, line, rule, message });
+            return reports;
+          }
+          
+          function readXmlReport() {
+            const found = [];
+          
+            for (const reportPath of findXmlReports()) {
+              const xml = fs.readFileSync(reportPath, 'utf8');
+              const fileBlocks = xml.split('<file ').slice(1);
+          
+              for (const block of fileBlocks) {
+                const nameMatch = block.match(/name="([^"]*)"/);
+                if (!nameMatch) {
+                  continue;
+                }
+                const file = toRelative(unescapeXml(nameMatch[1]));
+                const errorRegex = /<error\b([^>]*)\/?>/g;
+                let errorMatch;
+          
+                while ((errorMatch = errorRegex.exec(block)) !== null) {
+                  const attrs = errorMatch[1];
+                  const line = (attrs.match(/line="([^"]*)"/) || [])[1] || '?';
+                  const message = unescapeXml((attrs.match(/message="([^"]*)"/) || [])[1] || '');
+                  const source = (attrs.match(/source="([^"]*)"/) || [])[1] || '';
+                  const rule = source.split('.').pop() || 'Detekt';
+                  found.push({ file, line, rule, message });
+                }
               }
+          
             }
           
             return found;
