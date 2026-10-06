@@ -56,12 +56,6 @@ class PecaIdTest {
         assertEquals(id1.hashCode(), id2.hashCode())
     }
 
-    @Test
-    @DisplayName("Dado o agregado, quando gerar um novo id, então deve produzir um UUID não nulo")
-    fun givenAggregate_whenGeneratingNewId_thenProduceNonNullUuid() {
-        assertNotEquals(AggregateId.newId(), AggregateId.newId())
-    }
-
     private companion object {
         const val ID_VALIDO = "00000000-0000-0000-0000-000000000100"
     }

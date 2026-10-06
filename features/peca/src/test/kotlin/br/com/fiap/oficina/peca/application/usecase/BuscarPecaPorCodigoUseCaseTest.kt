@@ -5,6 +5,7 @@ import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.CODIGO
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.peca
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.response
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -39,7 +40,7 @@ class BuscarPecaPorCodigoUseCaseTest {
     fun givenNonExistentCodigo_whenSearching_thenThrowException() {
         every { repositoryMock.buscarPorCodigo("PC-404") } returns null
 
-        val exception = assertFailsWith<IllegalArgumentException> { useCase.executar("PC-404") }
+        val exception = assertFailsWith<EntityNotFoundException> { useCase.executar("PC-404") }
 
         assertEquals("Peça não encontrada! \nCódigo desconhecido.", exception.message)
 
