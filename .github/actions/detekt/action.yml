@@ -74,6 +74,11 @@ runs:
               reports.push(rootReport);
             }
           
+            const sharedReport = path.join(workspace, 'shared/build/reports/detekt/detekt.xml');
+            if (fs.existsSync(sharedReport)) {
+              reports.push(sharedReport);
+            }
+          
             const featuresDir = path.join(workspace, 'features');
             if (fs.existsSync(featuresDir)) {
               for (const entry of fs.readdirSync(featuresDir, { withFileTypes: true })) {
