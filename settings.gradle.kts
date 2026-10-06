@@ -7,5 +7,7 @@ plugins {
 }
 rootProject.name = "oficinamecanica"
 
+include("shared")
+
 include("features:funcionario")
 include("features:peca")
