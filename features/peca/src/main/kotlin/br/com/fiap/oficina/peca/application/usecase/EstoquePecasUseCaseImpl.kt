@@ -4,6 +4,7 @@ import br.com.fiap.oficina.peca.application.dto.EstoquePecaRequest
 import br.com.fiap.oficina.peca.application.dto.PecaResponse
 import br.com.fiap.oficina.peca.application.mapper.PecaMapper
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import kotlin.math.abs
@@ -17,7 +18,7 @@ internal class EstoquePecasUseCaseImpl(private val repository: PecaRepository, p
 
         val peca =
             repository.buscarPorCodigo(codigo)
-                ?: throw IllegalArgumentException("Peça não encontrada para o estoque")
+                ?: throw EntityNotFoundException("Peça não encontrada para o estoque")
 
         val estoqueAtualizado =
             if (request.quantidade < 0) {
