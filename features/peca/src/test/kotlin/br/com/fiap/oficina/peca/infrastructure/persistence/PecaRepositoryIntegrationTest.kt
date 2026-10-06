@@ -186,10 +186,7 @@ class PecaRepositoryIntegrationTest {
         quantidade = quantidade,
     )
 
-    private fun novaPecaJPA(
-        codigo: String,
-        nome: String = "Pastilha de freio",
-    ) = PecaJPA(
+    private fun novaPecaJPA(codigo: String, nome: String = "Pastilha de freio") = PecaJPA(
         id = UUID.randomUUID(),
         codigo = codigo,
         nome = nome,

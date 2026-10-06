@@ -5,10 +5,8 @@ import br.com.fiap.oficina.peca.domain.PecaId
 import br.com.fiap.oficina.peca.domain.PecaRepository
 import br.com.fiap.oficina.peca.infrastructure.mapper.PecaJPAMapper
 
-internal class PecaRepositoryImpl(
-    private val jpaRepository: PecaJPARepository,
-    private val mapper: PecaJPAMapper,
-) : PecaRepository {
+internal class PecaRepositoryImpl(private val jpaRepository: PecaJPARepository, private val mapper: PecaJPAMapper) :
+    PecaRepository {
     override fun salvar(peca: Peca): Peca {
         val resultado = jpaRepository.save(mapper.toJpa(peca))
         return mapper.toDomain(resultado)

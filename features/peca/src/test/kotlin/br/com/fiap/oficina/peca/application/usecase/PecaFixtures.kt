@@ -36,11 +36,7 @@ internal object PecaFixtures {
         ativo = ativo,
     )
 
-    fun request(
-        codigo: String = CODIGO,
-        nome: String = NOME,
-        quantidade: Int = 10,
-    ) = PecaRequest(
+    fun request(codigo: String = CODIGO, nome: String = NOME, quantidade: Int = 10) = PecaRequest(
         codigo = codigo,
         nome = nome,
         descricao = DESCRICAO,
@@ -51,9 +47,7 @@ internal object PecaFixtures {
         qtdEstoque = quantidade,
     )
 
-    fun response(
-        peca: Peca,
-    ) = PecaResponse(
+    fun response(peca: Peca) = PecaResponse(
         id = peca.id.toString(),
         codigo = peca.codigo,
         nome = peca.nome,

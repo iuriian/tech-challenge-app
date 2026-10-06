@@ -105,24 +105,20 @@ class PecaJPAMapperTest {
         }
     }
 
-    private fun peca(ativo: Boolean) =
-        Peca.reconstruir(
-            id = ID_VALIDO,
-            codigo = CODIGO,
-            nome = NOME,
-            descricao = DESCRICAO,
-            fabricante = FABRICANTE,
-            fornecedor = FORNECEDOR,
-            precoCompra = PRECO_COMPRA,
-            precoVenda = PRECO_VENDA,
-            quantidade = 10,
-            ativo = ativo,
-        )
+    private fun peca(ativo: Boolean) = Peca.reconstruir(
+        id = ID_VALIDO,
+        codigo = CODIGO,
+        nome = NOME,
+        descricao = DESCRICAO,
+        fabricante = FABRICANTE,
+        fornecedor = FORNECEDOR,
+        precoCompra = PRECO_COMPRA,
+        precoVenda = PRECO_VENDA,
+        quantidade = 10,
+        ativo = ativo,
+    )
 
-    private fun pecaJPA(
-        quantidade: Int = 10,
-        ativo: Boolean = false,
-    ) = PecaJPA(
+    private fun pecaJPA(quantidade: Int = 10, ativo: Boolean = false) = PecaJPA(
         id = UUID.fromString(ID_VALIDO),
         codigo = CODIGO,
         nome = NOME,

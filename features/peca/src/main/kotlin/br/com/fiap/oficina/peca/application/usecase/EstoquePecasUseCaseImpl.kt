@@ -9,15 +9,10 @@ import org.springframework.transaction.annotation.Transactional
 import kotlin.math.abs
 
 @Service
-internal class EstoquePecasUseCaseImpl(
-    private val repository: PecaRepository,
-    private val mapper: PecaMapper,
-) : EstoquePecasUseCase {
+internal class EstoquePecasUseCaseImpl(private val repository: PecaRepository, private val mapper: PecaMapper) :
+    EstoquePecasUseCase {
     @Transactional
-    override fun executar(
-        codigo: String,
-        request: EstoquePecaRequest,
-    ): PecaResponse {
+    override fun executar(codigo: String, request: EstoquePecaRequest): PecaResponse {
         require(request.quantidade != 0) { "Valor inválido para atualização de estoque" }
 
         val peca =

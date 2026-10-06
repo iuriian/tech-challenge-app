@@ -7,10 +7,10 @@ import br.com.fiap.oficina.peca.application.usecase.EstoquePecasUseCaseImpl
 import br.com.fiap.oficina.peca.domain.Peca
 import br.com.fiap.oficina.peca.domain.PecaRepository
 import br.com.fiap.oficina.peca.infrastructure.config.PecaConfig
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
@@ -114,17 +114,16 @@ class EstoqueConcorrenteIntegrationTest {
         }
     }
 
-    private fun novaPeca(quantidade: Int) =
-        Peca.criar(
-            codigo = CODIGO,
-            nome = "Pastilha de freio",
-            descricao = "Pastilha dianteira",
-            fabricante = "Bosch",
-            fornecedor = "AutoPeças RJ",
-            precoCompra = BigDecimal("50.00"),
-            precoVenda = BigDecimal("89.90"),
-            quantidade = quantidade,
-        )
+    private fun novaPeca(quantidade: Int) = Peca.criar(
+        codigo = CODIGO,
+        nome = "Pastilha de freio",
+        descricao = "Pastilha dianteira",
+        fabricante = "Bosch",
+        fornecedor = "AutoPeças RJ",
+        precoCompra = BigDecimal("50.00"),
+        precoVenda = BigDecimal("89.90"),
+        quantidade = quantidade,
+    )
 
     companion object {
         private const val CODIGO = "PC-001"

@@ -90,10 +90,7 @@ class PecaMapperTest {
         assertEquals(request.qtdEstoque, response.qtdEstoque)
     }
 
-    private fun request(
-        codigo: String = CODIGO,
-        nome: String = NOME,
-    ) = PecaRequest(
+    private fun request(codigo: String = CODIGO, nome: String = NOME) = PecaRequest(
         codigo = codigo,
         nome = nome,
         descricao = DESCRICAO,
@@ -104,19 +101,18 @@ class PecaMapperTest {
         qtdEstoque = 10,
     )
 
-    private fun pecaReconstruida(ativo: Boolean) =
-        Peca.reconstruir(
-            id = ID_VALIDO,
-            codigo = CODIGO,
-            nome = NOME,
-            descricao = DESCRICAO,
-            fabricante = FABRICANTE,
-            fornecedor = FORNECEDOR,
-            precoCompra = PRECO_COMPRA,
-            precoVenda = PRECO_VENDA,
-            quantidade = 10,
-            ativo = ativo,
-        )
+    private fun pecaReconstruida(ativo: Boolean) = Peca.reconstruir(
+        id = ID_VALIDO,
+        codigo = CODIGO,
+        nome = NOME,
+        descricao = DESCRICAO,
+        fabricante = FABRICANTE,
+        fornecedor = FORNECEDOR,
+        precoCompra = PRECO_COMPRA,
+        precoVenda = PRECO_VENDA,
+        quantidade = 10,
+        ativo = ativo,
+    )
 
     private companion object {
         const val ID_VALIDO = "00000000-0000-0000-0000-000000000100"

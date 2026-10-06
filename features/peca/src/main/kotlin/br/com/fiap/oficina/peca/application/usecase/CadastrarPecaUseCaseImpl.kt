@@ -7,10 +7,8 @@ import br.com.fiap.oficina.peca.domain.PecaRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class CadastrarPecaUseCaseImpl(
-    private val repository: PecaRepository,
-    private val mapper: PecaMapper,
-) : CadastrarPecaUseCase {
+internal class CadastrarPecaUseCaseImpl(private val repository: PecaRepository, private val mapper: PecaMapper) :
+    CadastrarPecaUseCase {
     override fun executar(request: PecaRequest): PecaResponse {
         repository.buscarPorCodigo(request.codigo)?.let {
             throw IllegalArgumentException("Peça já cadastrada")

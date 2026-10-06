@@ -9,14 +9,9 @@ import br.com.fiap.oficina.peca.domain.PecaRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class AtualizarPecaUseCaseImpl(
-    private val repository: PecaRepository,
-    private val mapper: PecaMapper,
-) : AtualizarPecaUseCase {
-    override fun executar(
-        id: String,
-        request: PecaRequest,
-    ): PecaResponse {
+internal class AtualizarPecaUseCaseImpl(private val repository: PecaRepository, private val mapper: PecaMapper) :
+    AtualizarPecaUseCase {
+    override fun executar(id: String, request: PecaRequest): PecaResponse {
         require(id.isNotBlank()) { "Id é obrigatório!" }
 
         val peca =
@@ -39,10 +34,7 @@ internal class AtualizarPecaUseCaseImpl(
         return mapper.toResponse(repository.salvar(pecaAtualizada))
     }
 
-    private fun validarCodigo(
-        codigo: String,
-        peca: Peca,
-    ) {
+    private fun validarCodigo(codigo: String, peca: Peca) {
         if (codigo == peca.codigo) return
 
         val pecaCadastrada = repository.buscarPorCodigo(codigo)

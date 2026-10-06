@@ -7,14 +7,9 @@ import br.com.fiap.oficina.peca.domain.PecaRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class AtualizarStatusPecaUseCaseImpl(
-    private val repository: PecaRepository,
-    private val mapper: PecaMapper,
-) : AtualizarStatusPecaUseCase {
-    override fun executar(
-        codigo: String,
-        status: StatusPecaRequest,
-    ): PecaResponse {
+internal class AtualizarStatusPecaUseCaseImpl(private val repository: PecaRepository, private val mapper: PecaMapper) :
+    AtualizarStatusPecaUseCase {
+    override fun executar(codigo: String, status: StatusPecaRequest): PecaResponse {
         val peca =
             repository.buscarPorCodigo(codigo)
                 ?: throw IllegalArgumentException("Peça não encontrada para $codigo")

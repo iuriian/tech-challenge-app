@@ -10,7 +10,5 @@ import java.util.UUID
 internal interface PecaJPARepository : JpaRepository<PecaJPA, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from PecaJPA p where p.codigo = :codigo")
-    fun findByCodigo(
-        @Param("codigo") codigo: String,
-    ): PecaJPA?
+    fun findByCodigo(@Param("codigo") codigo: String): PecaJPA?
 }

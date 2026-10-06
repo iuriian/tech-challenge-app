@@ -13,8 +13,6 @@ internal class PecaConfig {
     fun pecaJPAMapper(): PecaJPAMapper = PecaJPAMapper()
 
     @Bean
-    fun pecaRepository(
-        jpaRepository: PecaJPARepository,
-        mapper: PecaJPAMapper,
-    ): PecaRepository = PecaRepositoryImpl(jpaRepository, mapper)
+    fun pecaRepository(jpaRepository: PecaJPARepository, mapper: PecaJPAMapper): PecaRepository =
+        PecaRepositoryImpl(jpaRepository, mapper)
 }

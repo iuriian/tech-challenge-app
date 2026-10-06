@@ -6,10 +6,8 @@ import br.com.fiap.oficina.peca.domain.PecaRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class ListarPecasUseCaseImpl(
-    private val repository: PecaRepository,
-    private val mapper: PecaMapper,
-) : ListarPecasUseCase {
+internal class ListarPecasUseCaseImpl(private val repository: PecaRepository, private val mapper: PecaMapper) :
+    ListarPecasUseCase {
     override fun executar(): List<PecaResponse> {
         val pecas = repository.listar()
 

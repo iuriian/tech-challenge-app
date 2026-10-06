@@ -117,11 +117,7 @@ class PecaRepositoryImplTest {
         verify(exactly = 0) { mapperMock.toDomain(any()) }
     }
 
-    private fun peca(
-        id: String = ID_1,
-        codigo: String = CODIGO,
-        nome: String = NOME,
-    ) = Peca.reconstruir(
+    private fun peca(id: String = ID_1, codigo: String = CODIGO, nome: String = NOME) = Peca.reconstruir(
         id = id,
         codigo = codigo,
         nome = nome,
@@ -134,11 +130,7 @@ class PecaRepositoryImplTest {
         ativo = true,
     )
 
-    private fun pecaJPA(
-        id: String = ID_1,
-        codigo: String = CODIGO,
-        nome: String = NOME,
-    ) = PecaJPA(
+    private fun pecaJPA(id: String = ID_1, codigo: String = CODIGO, nome: String = NOME) = PecaJPA(
         id = UUID.fromString(id),
         codigo = codigo,
         nome = nome,

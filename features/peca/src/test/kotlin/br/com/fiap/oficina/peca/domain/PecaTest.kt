@@ -339,22 +339,19 @@ class PecaTest {
         quantidade = quantidade,
     )
 
-    private fun pecaReconstruida(
-        id: String = ID_VALIDO,
-        quantidade: Int = 10,
-        ativo: Boolean = false,
-    ) = Peca.reconstruir(
-        id = id,
-        codigo = CODIGO,
-        nome = NOME,
-        descricao = "Pastilha dianteira",
-        fabricante = FABRICANTE,
-        fornecedor = FORNECEDOR,
-        precoCompra = PRECO_COMPRA,
-        precoVenda = PRECO_VENDA,
-        quantidade = quantidade,
-        ativo = ativo,
-    )
+    private fun pecaReconstruida(id: String = ID_VALIDO, quantidade: Int = 10, ativo: Boolean = false) =
+        Peca.reconstruir(
+            id = id,
+            codigo = CODIGO,
+            nome = NOME,
+            descricao = "Pastilha dianteira",
+            fabricante = FABRICANTE,
+            fornecedor = FORNECEDOR,
+            precoCompra = PRECO_COMPRA,
+            precoVenda = PRECO_VENDA,
+            quantidade = quantidade,
+            ativo = ativo,
+        )
 
     private companion object {
         const val ID_VALIDO = "00000000-0000-0000-0000-000000000100"

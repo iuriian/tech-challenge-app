@@ -33,18 +33,17 @@ data class Peca private constructor(
             precoCompra: BigDecimal,
             precoVenda: BigDecimal,
             quantidade: Int,
-        ): Peca =
-            Peca(
-                id = PecaId.generate(),
-                codigo = codigo,
-                nome = nome,
-                descricao = descricao.orEmpty(),
-                fabricante = fabricante,
-                fornecedor = fornecedor.orEmpty(),
-                precoCompra = precoCompra,
-                precoVenda = precoVenda,
-                quantidade = quantidade,
-            )
+        ): Peca = Peca(
+            id = PecaId.generate(),
+            codigo = codigo,
+            nome = nome,
+            descricao = descricao.orEmpty(),
+            fabricante = fabricante,
+            fornecedor = fornecedor.orEmpty(),
+            precoCompra = precoCompra,
+            precoVenda = precoVenda,
+            quantidade = quantidade,
+        )
 
         fun reconstruir(
             id: String,
@@ -57,19 +56,18 @@ data class Peca private constructor(
             precoVenda: BigDecimal,
             quantidade: Int,
             ativo: Boolean,
-        ): Peca =
-            Peca(
-                id = PecaId.toUUID(id),
-                codigo = codigo,
-                nome = nome,
-                descricao = descricao,
-                fabricante = fabricante,
-                fornecedor = fornecedor,
-                precoCompra = precoCompra,
-                precoVenda = precoVenda,
-                quantidade = quantidade,
-                ativo = ativo,
-            )
+        ): Peca = Peca(
+            id = PecaId.toUUID(id),
+            codigo = codigo,
+            nome = nome,
+            descricao = descricao,
+            fabricante = fabricante,
+            fornecedor = fornecedor,
+            precoCompra = precoCompra,
+            precoVenda = precoVenda,
+            quantidade = quantidade,
+            ativo = ativo,
+        )
     }
 
     fun atualizar(
@@ -80,16 +78,15 @@ data class Peca private constructor(
         fornecedor: String? = null,
         precoCompra: BigDecimal,
         precoVenda: BigDecimal,
-    ): Peca =
-        this.copy(
-            nome = nome,
-            codigo = codigo,
-            descricao = descricao.orEmpty(),
-            fabricante = fabricante,
-            fornecedor = fornecedor.orEmpty(),
-            precoCompra = precoCompra,
-            precoVenda = precoVenda,
-        )
+    ): Peca = this.copy(
+        nome = nome,
+        codigo = codigo,
+        descricao = descricao.orEmpty(),
+        fabricante = fabricante,
+        fornecedor = fornecedor.orEmpty(),
+        precoCompra = precoCompra,
+        precoVenda = precoVenda,
+    )
 
     fun ativar(): Peca = copy(ativo = true)
 
