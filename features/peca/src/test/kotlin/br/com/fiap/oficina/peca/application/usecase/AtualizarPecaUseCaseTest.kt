@@ -10,6 +10,8 @@ import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.response
 import br.com.fiap.oficina.peca.domain.Peca
 import br.com.fiap.oficina.peca.domain.PecaId
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -78,7 +80,7 @@ class AtualizarPecaUseCaseTest {
         every { repositoryMock.buscarPorCodigo("PC-999") } returns outra
 
         val exception =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<BusinessRuleException> {
                 useCase.executar(ID_1, request(codigo = "PC-999"))
             }
 
@@ -106,7 +108,7 @@ class AtualizarPecaUseCaseTest {
         every { repositoryMock.buscarPorId(PecaId.toUUID(ID_1)) } returns null
 
         val exception =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<EntityNotFoundException> {
                 useCase.executar(ID_1, request())
             }
 

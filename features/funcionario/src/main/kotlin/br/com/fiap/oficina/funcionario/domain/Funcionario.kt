@@ -1,5 +1,7 @@
 package br.com.fiap.oficina.funcionario.domain
 
+import br.com.fiap.oficina.shared.domain.CPF
+
 data class Funcionario private constructor(val id: FuncionarioId, val nome: String, val cpf: CPF, val cargo: Cargo) {
     init {
         require(nome.isNotBlank()) { "Nome não pode ser vazio" }

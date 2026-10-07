@@ -3,8 +3,8 @@ package br.com.fiap.oficina.funcionario.application.usecase
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
-import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import org.springframework.stereotype.Service
 
 @Service
@@ -14,7 +14,7 @@ internal class CriarFuncionarioUseCaseImpl(
 ) : CriarFuncionarioUseCase {
     override fun executar(request: FuncionarioRequest): FuncionarioResponse {
         if (repository.buscarPorCpf(request.cpf) != null) {
-            throw FuncionarioException("Funcionário já cadastrado")
+            throw BusinessRuleException("Funcionário já cadastrado")
         }
 
         val funcionario = mapper.toDomain(request)

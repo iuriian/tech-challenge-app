@@ -7,6 +7,7 @@ import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.peca
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.response
 import br.com.fiap.oficina.peca.domain.Peca
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -101,7 +102,7 @@ class EstoquePecasUseCaseTest {
         every { repositoryMock.buscarPorCodigo("PC-404") } returns null
 
         val exception =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<EntityNotFoundException> {
                 useCase.executar("PC-404", EstoquePecaRequest(quantidade = 5))
             }
 

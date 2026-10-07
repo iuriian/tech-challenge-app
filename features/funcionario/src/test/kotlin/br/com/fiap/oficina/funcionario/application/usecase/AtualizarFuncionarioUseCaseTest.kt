@@ -4,8 +4,9 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Cargo
 import br.com.fiap.oficina.funcionario.domain.Funcionario
-import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -121,7 +122,7 @@ class AtualizarFuncionarioUseCaseTest {
             )
 
         val exception =
-            assertFailsWith<FuncionarioException> {
+            assertFailsWith<IllegalArgumentException> {
                 usecase.executar("", request)
             }
 
@@ -162,7 +163,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorId(any()) } returns null
 
         val exception =
-            assertFailsWith<FuncionarioException> {
+            assertFailsWith<EntityNotFoundException> {
                 usecase.executar(ID_EXISTENTE, request)
             }
 
@@ -195,7 +196,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorCpf(any()) } returns outroFuncionario
 
         val exception =
-            assertFailsWith<FuncionarioException> {
+            assertFailsWith<BusinessRuleException> {
                 usecase.executar(ID_EXISTENTE, request)
             }
 

@@ -4,6 +4,7 @@ import br.com.fiap.oficina.peca.application.dto.PecaResponse
 import br.com.fiap.oficina.peca.application.mapper.PecaMapper
 import br.com.fiap.oficina.peca.domain.PecaId
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import org.springframework.stereotype.Service
 
 @Service
@@ -11,7 +12,7 @@ internal class BuscarPecaPorIdUseCaseImpl(private val repository: PecaRepository
     BuscarPecaPorIdUseCase {
     override fun executar(id: String): PecaResponse {
         val peca = repository.buscarPorId(PecaId.toUUID(id))
-            ?: throw IllegalArgumentException("Peça não encontrada, id: $id")
+            ?: throw EntityNotFoundException("Peça não encontrada, id: $id")
 
         return mapper.toResponse(peca)
     }

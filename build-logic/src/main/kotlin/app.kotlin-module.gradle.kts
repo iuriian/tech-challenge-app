@@ -2,6 +2,7 @@ import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
+    `java-library`
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.kotlin.plugin.spring")
     id("org.jetbrains.kotlin.plugin.jpa")

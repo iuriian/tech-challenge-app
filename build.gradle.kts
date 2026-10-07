@@ -19,11 +19,15 @@ repositories {
 }
 
 dependencies {
+    // Shared kernel: domínio comum aos módulos de feature
+    implementation(project(":shared"))
+
     // Inclusão de módulos de features do projeto
     implementation(project(":features:funcionario"))
     implementation(project(":features:peca"))
 
     // Agregador de testes
+    jacocoAggregation(project(":shared"))
     jacocoAggregation(project(":features:funcionario"))
     jacocoAggregation(project(":features:peca"))
 

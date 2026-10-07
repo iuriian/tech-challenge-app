@@ -6,6 +6,8 @@ import br.com.fiap.oficina.peca.application.mapper.PecaMapper
 import br.com.fiap.oficina.peca.domain.Peca
 import br.com.fiap.oficina.peca.domain.PecaId
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import org.springframework.stereotype.Service
 
 @Service
@@ -16,7 +18,7 @@ internal class AtualizarPecaUseCaseImpl(private val repository: PecaRepository, 
 
         val peca =
             repository.buscarPorId(PecaId.toUUID(id))
-                ?: throw IllegalArgumentException("Peça não encontrada!")
+                ?: throw EntityNotFoundException("Peça não encontrada!")
 
         validarCodigo(request.codigo, peca)
 
@@ -40,7 +42,7 @@ internal class AtualizarPecaUseCaseImpl(private val repository: PecaRepository, 
         val pecaCadastrada = repository.buscarPorCodigo(codigo)
 
         if (pecaCadastrada != null && pecaCadastrada.id != peca.id) {
-            throw IllegalArgumentException("Código já cadastrado!")
+            throw BusinessRuleException("Código já cadastrado!")
         }
     }
 }

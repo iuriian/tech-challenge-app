@@ -4,9 +4,10 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
-import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioId
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import org.springframework.stereotype.Service
 
 @Service
@@ -15,11 +16,11 @@ internal class AtualizarFuncionarioUseCaseImpl(
     private val mapper: FuncionarioMapper,
 ) : AtualizarFuncionarioUseCase {
     override fun executar(id: String, request: FuncionarioRequest): FuncionarioResponse {
-        require(id.isNotBlank()) { throw FuncionarioException("Id é obrigatório!") }
+        require(id.isNotBlank()) { "Id é obrigatório!" }
 
         val funcionario =
             repository.buscarPorId(FuncionarioId.toUUID(id))
-                ?: throw FuncionarioException("Funcionário não encontrado!")
+                ?: throw EntityNotFoundException("Funcionário não encontrado!")
 
         validarCpfDisponivel(request.cpf, funcionario)
 
@@ -39,7 +40,7 @@ internal class AtualizarFuncionarioUseCaseImpl(
         val cpfCadastrado = repository.buscarPorCpf(cpf)
 
         if (cpfCadastrado != null && cpfCadastrado.id != funcionario.id) {
-            throw FuncionarioException("CPF já cadastrado!")
+            throw BusinessRuleException("CPF já cadastrado!")
         }
     }
 }

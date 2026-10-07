@@ -6,6 +6,7 @@ import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.peca
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.response
 import br.com.fiap.oficina.peca.domain.PecaId
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -40,7 +41,7 @@ class BuscarPecaPorIdUseCaseTest {
     fun givenNonExistentId_whenSearching_thenThrowException() {
         every { repositoryMock.buscarPorId(PecaId.toUUID(ID_1)) } returns null
 
-        val exception = assertFailsWith<IllegalArgumentException> { useCase.executar(ID_1) }
+        val exception = assertFailsWith<EntityNotFoundException> { useCase.executar(ID_1) }
 
         assertEquals("Peça não encontrada, id: $ID_1", exception.message)
 

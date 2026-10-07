@@ -3,8 +3,8 @@ package br.com.fiap.oficina.funcionario.application.usecase
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
-import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -57,7 +57,7 @@ class BuscarFuncionarioPorNomeUseCaseTest {
         every { repositoryMock.buscarPorNome(any()) } returns null
 
         val exception =
-            assertThrows<FuncionarioException> {
+            assertThrows<EntityNotFoundException> {
                 useCase.executar(nome)
             }
 

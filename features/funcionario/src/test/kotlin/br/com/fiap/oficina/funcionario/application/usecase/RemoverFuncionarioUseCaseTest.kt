@@ -1,9 +1,9 @@
 package br.com.fiap.oficina.funcionario.application.usecase
 
 import br.com.fiap.oficina.funcionario.domain.Funcionario
-import br.com.fiap.oficina.funcionario.domain.FuncionarioException
 import br.com.fiap.oficina.funcionario.domain.FuncionarioId
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
+import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -51,7 +51,7 @@ class RemoverFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorId(funcionarioId) } returns null
 
         val exception =
-            assertFailsWith<FuncionarioException> {
+            assertFailsWith<EntityNotFoundException> {
                 usecase.executar(id)
             }
 

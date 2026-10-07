@@ -5,6 +5,7 @@ import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.peca
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.request
 import br.com.fiap.oficina.peca.application.usecase.PecaFixtures.response
 import br.com.fiap.oficina.peca.domain.PecaRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -46,7 +47,7 @@ class CadastrarPecaUseCaseTest {
 
         every { repositoryMock.buscarPorCodigo(request.codigo) } returns peca()
 
-        val exception = assertFailsWith<IllegalArgumentException> { useCase.executar(request) }
+        val exception = assertFailsWith<BusinessRuleException> { useCase.executar(request) }
 
         assertEquals("Peça já cadastrada", exception.message)
 
