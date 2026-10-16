@@ -1,31 +1,28 @@
-package br.com.fiap.oficina.infrastructure.persistence.jpa.entity
+package br.com.fiap.oficina.veiculo.infrastructure.persistence
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.validation.constraints.Size
 import java.util.UUID
 
 @Entity
 @Table(name = "veiculos")
-class VeiculoJpaEntity(
+internal data class VeiculoJPA(
     @Id
-    var idVeiculo: UUID,
+    val id: UUID,
     @Column(nullable = false)
-    var marca: String,
+    val marca: String,
     @Column(nullable = false)
-    var nome: String,
+    val nome: String,
     @Column(nullable = false)
-    var modelo: String,
+    val modelo: String,
     @Column(nullable = false)
-    var ano: String,
+    val ano: String,
     @Column(nullable = false, unique = true)
     @Size(min = 7, max = 7, message = "Input must be exactly 7 characters long")
-    var placa: String,
-    @ManyToOne
-    @JoinColumn(name = "motorista_id")
-    var motorista: ClienteJpaEntity,
+    val placa: String,
+    @Column(name = "motorista_id", nullable = false)
+    val proprietarioId: UUID,
 )
