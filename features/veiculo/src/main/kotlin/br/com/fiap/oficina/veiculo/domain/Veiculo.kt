@@ -7,7 +7,7 @@ data class Veiculo private constructor(
     val modelo: String,
     val ano: String,
     val placa: String,
-    val proprietarioId: ProprietarioId,
+    val proprietarioRef: ProprietarioRef,
 ) {
     companion object {
         private val PLACA_REGEX = Regex("^[A-Za-z]{3}[0-9][A-Za-z0-9][0-9]{2}$")
@@ -18,7 +18,7 @@ data class Veiculo private constructor(
             modelo: String,
             ano: String,
             placa: String,
-            proprietarioId: String,
+            proprietarioRef: String,
         ): Veiculo {
             require(marca.isNotBlank()) { "Marca é obrigatória" }
             require(nome.isNotBlank()) { "Nome do veículo é obrigatório" }
@@ -35,7 +35,7 @@ data class Veiculo private constructor(
                 modelo = modelo,
                 ano = ano,
                 placa = placa,
-                proprietarioId = ProprietarioId.toUUID(proprietarioId),
+                proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
         }
 
@@ -46,7 +46,7 @@ data class Veiculo private constructor(
             modelo: String,
             ano: String,
             placa: String,
-            proprietarioId: String,
+            proprietarioRef: String,
         ): Veiculo =
             Veiculo(
                 id = VeiculoId.toUUID(id),
@@ -55,7 +55,7 @@ data class Veiculo private constructor(
                 modelo = modelo,
                 ano = ano,
                 placa = placa,
-                proprietarioId = ProprietarioId.toUUID(proprietarioId),
+                proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
     }
 }
