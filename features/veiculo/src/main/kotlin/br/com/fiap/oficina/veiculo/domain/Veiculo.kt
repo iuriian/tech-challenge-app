@@ -1,15 +1,13 @@
-package br.com.fiap.oficina.domain.entity
+package br.com.fiap.oficina.veiculo.domain
 
-import br.com.fiap.oficina.domain.valueobject.Id
-
-data class Veiculo(
-    val id: Id,
+data class Veiculo private constructor(
+    val id: VeiculoId,
     val marca: String,
     val nome: String,
     val modelo: String,
     val ano: String,
     val placa: String,
-    val motorista: Cliente,
+    val proprietarioId: ProprietarioId,
 ) {
     companion object {
         private val PLACA_REGEX = Regex("^[A-Za-z]{3}[0-9][A-Za-z0-9][0-9]{2}$")
@@ -20,7 +18,7 @@ data class Veiculo(
             modelo: String,
             ano: String,
             placa: String,
-            motorista: Cliente,
+            proprietarioId: String,
         ): Veiculo {
             require(marca.isNotBlank()) { "Marca é obrigatória" }
             require(nome.isNotBlank()) { "Nome do veículo é obrigatório" }
@@ -31,13 +29,13 @@ data class Veiculo(
             }
 
             return Veiculo(
-                id = Id.generate(),
+                id = VeiculoId.generate(),
                 marca = marca,
                 nome = nome,
                 modelo = modelo,
                 ano = ano,
                 placa = placa,
-                motorista = motorista,
+                proprietarioId = ProprietarioId.toUUID(proprietarioId),
             )
         }
 
@@ -48,15 +46,16 @@ data class Veiculo(
             modelo: String,
             ano: String,
             placa: String,
-            motorista: Cliente,
-        ): Veiculo = Veiculo(
-            id = Id.fromString(id),
-            marca = marca,
-            nome = nome,
-            modelo = modelo,
-            ano = ano,
-            placa = placa,
-            motorista = motorista,
-        )
+            proprietarioId: String,
+        ): Veiculo =
+            Veiculo(
+                id = VeiculoId.toUUID(id),
+                marca = marca,
+                nome = nome,
+                modelo = modelo,
+                ano = ano,
+                placa = placa,
+                proprietarioId = ProprietarioId.toUUID(proprietarioId),
+            )
     }
 }
