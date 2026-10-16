@@ -1,6 +1,6 @@
 package br.com.fiap.oficina.veiculo.infrastructure.persistence
 
-import br.com.fiap.oficina.veiculo.domain.ProprietarioId
+import br.com.fiap.oficina.veiculo.domain.ProprietarioRef
 import br.com.fiap.oficina.veiculo.domain.Veiculo
 import br.com.fiap.oficina.veiculo.domain.VeiculoId
 import br.com.fiap.oficina.veiculo.domain.VeiculoRepository
@@ -25,7 +25,7 @@ internal class VeiculoRepositoryImpl(
 
     override fun buscarPorPlaca(placa: String): Veiculo? = repository.findByPlaca(placa)?.let(mapper::toDomain)
 
-    override fun buscarPorMotorista(id: ProprietarioId): List<Veiculo> =
+    override fun buscarPorMotorista(id: ProprietarioRef): List<Veiculo> =
         repository.findByProprietarioId(id.value).map(mapper::toDomain)
 
     override fun deletar(id: VeiculoId) = repository.deleteById(id.value)
