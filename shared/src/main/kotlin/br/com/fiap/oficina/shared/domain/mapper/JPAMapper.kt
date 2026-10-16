@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.shared.infrastructure.mapper
+package br.com.fiap.oficina.shared.domain.mapper
 
 interface JPAMapper<Domain, JPA> {
     fun toDomain(jpa: JPA): Domain
