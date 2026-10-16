@@ -7,7 +7,7 @@ internal interface VeiculoRepository {
 
     fun buscarPorPlaca(placa: String): Veiculo?
 
-    fun buscarPorMotorista(motoristaId: ProprietarioId): List<Veiculo>
+    fun buscarPorMotorista(id: ProprietarioId): List<Veiculo>
 
     fun listarTodos(): List<Veiculo>
 
