@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.application.dto
+package br.com.fiap.oficina.veiculo.application.dto
 
 data class VeiculoResponse(
     val id: String,
@@ -7,5 +7,5 @@ data class VeiculoResponse(
     val modelo: String,
     val ano: String,
     val placa: String,
-    val motoristaId: String,
+    val proprietarioId: String,
 )

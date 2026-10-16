@@ -1,5 +1,6 @@
-package br.com.fiap.oficina.application.dto
+package br.com.fiap.oficina.veiculo.application.dto
 
+import br.com.fiap.oficina.veiculo.domain.ProprietarioId
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
@@ -16,6 +17,6 @@ data class VeiculoRequest(
     )
     val placa: String,
     @field:NotNull
-    val motoristaId: String,
+    val proprietarioId: String,
     val id: String? = null,
 )
