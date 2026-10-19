@@ -13,20 +13,18 @@ internal class VeiculoRepositoryImpl(
     private val repository: VeiculoJPARepository,
     private val mapper: VeiculoJPAMapper,
 ) : VeiculoRepository {
-    override fun salvar(veiculo: Veiculo): Veiculo =
-        try {
-            mapper.toDomain(repository.saveAndFlush(mapper.toJPA(veiculo)))
-        } catch (e: DataIntegrityViolationException) {
-            throw BusinessRuleException("Já existe veículo cadastrado com a placa ${veiculo.placa}", e)
-        }
+    override fun salvar(veiculo: Veiculo): Veiculo = try {
+        mapper.toDomain(repository.saveAndFlush(mapper.toJPA(veiculo)))
+    } catch (e: DataIntegrityViolationException) {
+        throw BusinessRuleException("Já existe veículo cadastrado com a placa ${veiculo.placa}", e)
+    }
 
     override fun listarTodos(): List<Veiculo> = repository.findAll().map(mapper::toDomain)
 
-    override fun buscarPorId(id: VeiculoId): Veiculo? =
-        repository
-            .findById(id.value)
-            .map(mapper::toDomain)
-            .orElse(null)
+    override fun buscarPorId(id: VeiculoId): Veiculo? = repository
+        .findById(id.value)
+        .map(mapper::toDomain)
+        .orElse(null)
 
     override fun buscarPorPlaca(placa: Placa): Veiculo? = repository.findByPlaca(placa.value)?.let(mapper::toDomain)
 

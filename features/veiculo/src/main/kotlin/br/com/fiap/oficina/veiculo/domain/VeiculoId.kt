@@ -3,9 +3,7 @@ package br.com.fiap.oficina.veiculo.domain
 import br.com.fiap.oficina.shared.domain.AggregateId
 import java.util.UUID
 
-data class VeiculoId(
-    override val value: UUID,
-) : AggregateId() {
+data class VeiculoId(override val value: UUID) : AggregateId() {
     companion object {
         fun generate(): VeiculoId = VeiculoId(newId())
 

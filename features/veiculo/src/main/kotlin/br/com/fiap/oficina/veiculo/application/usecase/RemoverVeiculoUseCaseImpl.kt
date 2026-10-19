@@ -6,9 +6,7 @@ import br.com.fiap.oficina.veiculo.domain.VeiculoRepository
 import org.springframework.stereotype.Service
 
 @Service
-internal class RemoverVeiculoUseCaseImpl(
-    private val repository: VeiculoRepository,
-) : RemoverVeiculoUseCase {
+internal class RemoverVeiculoUseCaseImpl(private val repository: VeiculoRepository) : RemoverVeiculoUseCase {
     override fun executar(id: String) {
         val veiculo =
             repository.buscarPorId(VeiculoId.toUUID(id))

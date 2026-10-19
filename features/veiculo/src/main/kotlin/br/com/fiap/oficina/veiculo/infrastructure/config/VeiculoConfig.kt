@@ -21,10 +21,8 @@ internal class VeiculoConfig {
 
     // Implementations
     @Bean
-    fun veiculoRepository(
-        repository: VeiculoJPARepository,
-        jpaMapper: VeiculoJPAMapper,
-    ): VeiculoRepository = VeiculoRepositoryImpl(repository, jpaMapper)
+    fun veiculoRepository(repository: VeiculoJPARepository, jpaMapper: VeiculoJPAMapper): VeiculoRepository =
+        VeiculoRepositoryImpl(repository, jpaMapper)
 
     @Bean
     fun consultarProprietarioAdapter(

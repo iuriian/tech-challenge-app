@@ -20,10 +20,7 @@ internal class AtualizarVeiculoUseCaseImpl(
     private val consultarProprietario: ConsultarProprietario,
 ) : AtualizarVeiculoUseCase {
     @Transactional
-    override fun executar(
-        id: String,
-        request: VeiculoRequest,
-    ): VeiculoResponse {
+    override fun executar(id: String, request: VeiculoRequest): VeiculoResponse {
         val veiculoRequest = mapper.toDomain(request)
         val veiculo =
             repository.buscarPorId(VeiculoId.toUUID(id))
@@ -53,10 +50,7 @@ internal class AtualizarVeiculoUseCaseImpl(
         )
     }
 
-    private fun validarPlaca(
-        placa: Placa,
-        veiculo: Veiculo,
-    ) {
+    private fun validarPlaca(placa: Placa, veiculo: Veiculo) {
         if (placa != veiculo.placa) {
             val veiculoCadastrado = repository.buscarPorPlaca(placa)
 

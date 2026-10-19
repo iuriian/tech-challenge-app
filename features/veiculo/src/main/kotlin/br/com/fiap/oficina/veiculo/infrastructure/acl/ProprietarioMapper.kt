@@ -6,10 +6,9 @@ import br.com.fiap.oficina.veiculo.domain.ProprietarioRef
 import br.com.fiap.oficina.veiculo.domain.port.DadosProprietario
 
 internal class ProprietarioMapper : QueryMapper<ClienteQueryDto, DadosProprietario> {
-    override fun toProviderResponse(dto: ClienteQueryDto): DadosProprietario =
-        DadosProprietario(
-            ref = ProprietarioRef.toUUID(dto.id),
-            nome = dto.nome,
-            numeroDocumento = dto.numeroDocumento,
-        )
+    override fun toProviderResponse(dto: ClienteQueryDto): DadosProprietario = DadosProprietario(
+        ref = ProprietarioRef.toUUID(dto.id),
+        nome = dto.nome,
+        numeroDocumento = dto.numeroDocumento,
+    )
 }

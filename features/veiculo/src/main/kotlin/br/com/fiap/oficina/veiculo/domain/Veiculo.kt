@@ -27,16 +27,15 @@ data class Veiculo private constructor(
             ano: String,
             placa: String,
             proprietarioRef: String,
-        ): Veiculo =
-            Veiculo(
-                id = VeiculoId.generate(),
-                marca = marca,
-                nome = nome,
-                modelo = modelo,
-                ano = ano,
-                placa = Placa.criar(placa),
-                proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
-            )
+        ): Veiculo = Veiculo(
+            id = VeiculoId.generate(),
+            marca = marca,
+            nome = nome,
+            modelo = modelo,
+            ano = ano,
+            placa = Placa.criar(placa),
+            proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
+        )
 
         fun reconstruir(
             id: String,
@@ -46,16 +45,15 @@ data class Veiculo private constructor(
             ano: String,
             placa: String,
             proprietarioRef: String,
-        ): Veiculo =
-            Veiculo(
-                id = VeiculoId.toUUID(id),
-                marca = marca,
-                nome = nome,
-                modelo = modelo,
-                ano = ano,
-                placa = Placa.criar(placa),
-                proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
-            )
+        ): Veiculo = Veiculo(
+            id = VeiculoId.toUUID(id),
+            marca = marca,
+            nome = nome,
+            modelo = modelo,
+            ano = ano,
+            placa = Placa.criar(placa),
+            proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
+        )
     }
 
     fun atualizar(
