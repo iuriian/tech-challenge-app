@@ -12,6 +12,13 @@ data class Veiculo private constructor(
     val placa: Placa,
     val proprietarioRef: ProprietarioRef,
 ) {
+    init {
+        require(marca.isNotBlank()) { "Marca é obrigatória" }
+        require(nome.isNotBlank()) { "Nome do veículo é obrigatório" }
+        require(modelo.isNotBlank()) { "Modelo é obrigatório" }
+        require(ano.isNotBlank()) { "Ano é obrigatório" }
+    }
+
     companion object {
         fun criar(
             marca: String,
@@ -20,13 +27,8 @@ data class Veiculo private constructor(
             ano: String,
             placa: String,
             proprietarioRef: String,
-        ): Veiculo {
-            require(marca.isNotBlank()) { "Marca é obrigatória" }
-            require(nome.isNotBlank()) { "Nome do veículo é obrigatório" }
-            require(modelo.isNotBlank()) { "Modelo é obrigatório" }
-            require(ano.isNotBlank()) { "Ano é obrigatório" }
-
-            return Veiculo(
+        ): Veiculo =
+            Veiculo(
                 id = VeiculoId.generate(),
                 marca = marca,
                 nome = nome,
@@ -35,7 +37,6 @@ data class Veiculo private constructor(
                 placa = Placa.criar(placa),
                 proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
-        }
 
         fun reconstruir(
             id: String,
@@ -56,4 +57,20 @@ data class Veiculo private constructor(
                 proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
     }
+
+    fun atualizar(
+        marca: String,
+        nome: String,
+        modelo: String,
+        ano: String,
+        placa: Placa,
+        proprietarioRef: ProprietarioRef,
+    ) = this.copy(
+        marca = marca,
+        nome = nome,
+        modelo = modelo,
+        ano = ano,
+        placa = placa,
+        proprietarioRef = proprietarioRef,
+    )
 }
