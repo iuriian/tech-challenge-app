@@ -19,11 +19,13 @@ internal class CriarVeiculoUseCaseImpl(
     override fun executar(request: VeiculoRequest): VeiculoResponse {
         val veiculo = mapper.toDomain(request)
 
-        if (!repository.existeVeiculo(veiculo.placa)) {
+        if (repository.existeVeiculo(veiculo.placa)) {
             throw BusinessRuleException("Já existe veículo cadastrado com a placa ${veiculo.placa}")
         }
 
-        val proprietario = consultarProprietario.buscarPorId(veiculo.proprietarioRef)
+        val proprietario =
+            consultarProprietario.buscarPorId(veiculo.proprietarioRef)
+                ?: throw BusinessRuleException("Proprietário não encontrado com o id ${veiculo.proprietarioRef}")
 
         return mapper.toResponse(repository.salvar(veiculo), proprietario)
     }
