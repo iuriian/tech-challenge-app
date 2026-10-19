@@ -7,5 +7,5 @@ data class VeiculoResponse(
     val modelo: String,
     val ano: String,
     val placa: String,
-    val proprietario: ProprietarioResponse,
+    val proprietario: ProprietarioResponse?,
 )

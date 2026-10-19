@@ -22,7 +22,7 @@ internal class VeiculoMapper : CompositeApplicationMapper<Veiculo, DadosPropriet
 
     override fun toResponse(
         domain: Veiculo,
-        context: DadosProprietario,
+        context: DadosProprietario?,
     ): VeiculoResponse =
         VeiculoResponse(
             id = domain.id.value.toString(),
@@ -32,10 +32,12 @@ internal class VeiculoMapper : CompositeApplicationMapper<Veiculo, DadosPropriet
             ano = domain.ano,
             placa = domain.placa.value,
             proprietario =
-                ProprietarioResponse(
-                    id = context.ref.value.toString(),
-                    nome = context.nome,
-                    numeroDocumento = context.numeroDocumento,
-                ),
+                context?.let {
+                    ProprietarioResponse(
+                        id = it.ref.value.toString(),
+                        nome = it.nome,
+                        numeroDocumento = it.numeroDocumento,
+                    )
+                },
         )
 }
