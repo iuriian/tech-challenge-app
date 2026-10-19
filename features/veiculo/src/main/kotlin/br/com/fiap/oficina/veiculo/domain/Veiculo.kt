@@ -2,6 +2,7 @@ package br.com.fiap.oficina.veiculo.domain
 
 import br.com.fiap.oficina.shared.domain.valueobject.Placa
 
+@ConsistentCopyVisibility
 data class Veiculo private constructor(
     val id: VeiculoId,
     val marca: String,
