@@ -9,9 +9,6 @@ internal class ConsultarProprietarioAdapter(
     val queryPort: ClienteQueryPort,
     val mapper: ProprietarioMapper,
 ) : ConsultarProprietario {
-    override fun buscarPorId(ref: ProprietarioRef): DadosProprietario {
-        val proprietario = queryPort.buscarPorId(ref.value)
-
-        return mapper.toProviderResponse(proprietario)
-    }
+    override fun buscarPorId(ref: ProprietarioRef): DadosProprietario? =
+        queryPort.buscarPorId(ref.value)?.let(mapper::toProviderResponse)
 }
