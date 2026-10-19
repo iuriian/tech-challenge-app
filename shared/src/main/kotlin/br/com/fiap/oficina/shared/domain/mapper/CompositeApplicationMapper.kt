@@ -5,6 +5,6 @@ interface CompositeApplicationMapper<Domain, Context, Request, Response> {
 
     fun toResponse(
         domain: Domain,
-        context: Context,
+        context: Context?,
     ): Response
 }
