@@ -1,6 +1,7 @@
 package br.com.fiap.oficina.cliente.domain
 
-data class Endereco(
+@ConsistentCopyVisibility
+data class Endereco private constructor(
     val id: EnderecoId,
     val logradouro: String,
     val numero: String,
@@ -48,15 +49,16 @@ data class Endereco(
             cidade: String,
             estado: String,
             cep: String,
-        ): Endereco = Endereco(
-            id = EnderecoId.toUUID(id),
-            logradouro = logradouro,
-            numero = numero,
-            complemento = complemento,
-            bairro = bairro,
-            cidade = cidade,
-            estado = estado,
-            cep = cep,
-        )
+        ): Endereco =
+            Endereco(
+                id = EnderecoId.toUUID(id),
+                logradouro = logradouro,
+                numero = numero,
+                complemento = complemento,
+                bairro = bairro,
+                cidade = cidade,
+                estado = estado,
+                cep = cep,
+            )
     }
 }

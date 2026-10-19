@@ -2,7 +2,8 @@ package br.com.fiap.oficina.cliente.domain
 
 import br.com.fiap.oficina.shared.domain.valueobject.Document
 
-data class Cliente(
+@ConsistentCopyVisibility
+data class Cliente private constructor(
     val id: ClienteId,
     val nome: String,
     val documento: Document,
@@ -22,14 +23,15 @@ data class Cliente(
             email: String,
             endereco: Endereco? = null,
             contatos: List<Contato> = emptyList(),
-        ): Cliente = Cliente(
-            id = ClienteId.generate(),
-            nome = nome,
-            documento = documento,
-            email = email,
-            endereco = endereco,
-            contatos = contatos,
-        )
+        ): Cliente =
+            Cliente(
+                id = ClienteId.generate(),
+                nome = nome,
+                documento = documento,
+                email = email,
+                endereco = endereco,
+                contatos = contatos,
+            )
 
         fun reconstruir(
             id: String,
@@ -38,14 +40,15 @@ data class Cliente(
             email: String,
             endereco: Endereco? = null,
             contatos: List<Contato> = emptyList(),
-        ): Cliente = Cliente(
-            id = ClienteId.toUUID(id),
-            nome = nome,
-            documento = documento,
-            email = email,
-            endereco = endereco,
-            contatos = contatos,
-        )
+        ): Cliente =
+            Cliente(
+                id = ClienteId.toUUID(id),
+                nome = nome,
+                documento = documento,
+                email = email,
+                endereco = endereco,
+                contatos = contatos,
+            )
     }
 
     fun atualizar(
