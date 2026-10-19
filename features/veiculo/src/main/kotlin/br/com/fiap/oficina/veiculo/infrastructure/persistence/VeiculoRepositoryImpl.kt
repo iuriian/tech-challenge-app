@@ -26,10 +26,10 @@ internal class VeiculoRepositoryImpl(
 
     override fun buscarPorPlaca(placa: Placa): Veiculo? = repository.findByPlaca(placa.value)?.let(mapper::toDomain)
 
-    override fun buscarPorMotorista(id: ProprietarioRef): List<Veiculo> =
+    override fun buscarPorProprietario(id: ProprietarioRef): List<Veiculo> =
         repository.findByProprietarioId(id.value).map(mapper::toDomain)
 
     override fun deletar(id: VeiculoId) = repository.deleteById(id.value)
 
-    override fun existeVeiculo(placa: Placa): Boolean = repository.exist(placa.value)
+    override fun existeVeiculo(placa: Placa): Boolean = repository.existsByPlaca(placa.value)
 }
