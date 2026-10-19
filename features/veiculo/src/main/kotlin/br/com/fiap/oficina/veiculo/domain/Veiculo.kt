@@ -1,17 +1,17 @@
 package br.com.fiap.oficina.veiculo.domain
 
+import br.com.fiap.oficina.shared.domain.valueobject.Placa
+
 data class Veiculo private constructor(
     val id: VeiculoId,
     val marca: String,
     val nome: String,
     val modelo: String,
     val ano: String,
-    val placa: String,
+    val placa: Placa,
     val proprietarioRef: ProprietarioRef,
 ) {
     companion object {
-        private val PLACA_REGEX = Regex("^[A-Za-z]{3}[0-9][A-Za-z0-9][0-9]{2}$")
-
         fun criar(
             marca: String,
             nome: String,
@@ -24,9 +24,6 @@ data class Veiculo private constructor(
             require(nome.isNotBlank()) { "Nome do veículo é obrigatório" }
             require(modelo.isNotBlank()) { "Modelo é obrigatório" }
             require(ano.isNotBlank()) { "Ano é obrigatório" }
-            require(PLACA_REGEX.matches(placa)) {
-                "Placa inválida: use o formato antigo (ABC1234) ou Mercosul (ABC1D23)"
-            }
 
             return Veiculo(
                 id = VeiculoId.generate(),
@@ -34,7 +31,7 @@ data class Veiculo private constructor(
                 nome = nome,
                 modelo = modelo,
                 ano = ano,
-                placa = placa,
+                placa = Placa.criar(placa),
                 proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
         }
@@ -54,7 +51,7 @@ data class Veiculo private constructor(
                 nome = nome,
                 modelo = modelo,
                 ano = ano,
-                placa = placa,
+                placa = Placa.criar(placa),
                 proprietarioRef = ProprietarioRef.toUUID(proprietarioRef),
             )
     }
