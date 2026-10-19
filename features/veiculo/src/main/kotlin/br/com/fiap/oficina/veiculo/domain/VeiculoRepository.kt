@@ -9,7 +9,7 @@ internal interface VeiculoRepository {
 
     fun buscarPorPlaca(placa: Placa): Veiculo?
 
-    fun buscarPorMotorista(id: ProprietarioRef): List<Veiculo>
+    fun buscarPorProprietario(id: ProprietarioRef): List<Veiculo>
 
     fun existeVeiculo(placa: Placa): Boolean
 
