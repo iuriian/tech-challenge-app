@@ -1,13 +1,15 @@
 package br.com.fiap.oficina.veiculo.application.mapper
 
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.CompositeApplicationMapper
+import br.com.fiap.oficina.veiculo.application.dto.ProprietarioResponse
 import br.com.fiap.oficina.veiculo.application.dto.VeiculoRequest
 import br.com.fiap.oficina.veiculo.application.dto.VeiculoResponse
 import br.com.fiap.oficina.veiculo.domain.Veiculo
+import br.com.fiap.oficina.veiculo.domain.port.DadosProprietario
 import org.springframework.stereotype.Component
 
 @Component
-internal class VeiculoMapper : ApplicationMapper<Veiculo, VeiculoRequest, VeiculoResponse> {
+internal class VeiculoMapper : CompositeApplicationMapper<Veiculo, DadosProprietario, VeiculoRequest, VeiculoResponse> {
     override fun toDomain(request: VeiculoRequest): Veiculo =
         Veiculo.criar(
             marca = request.marca,
@@ -15,17 +17,25 @@ internal class VeiculoMapper : ApplicationMapper<Veiculo, VeiculoRequest, Veicul
             modelo = request.modelo,
             ano = request.ano,
             placa = request.placa,
-            proprietarioId = request.proprietarioId,
+            proprietarioRef = request.proprietarioId,
         )
 
-    override fun toResponse(domain: Veiculo): VeiculoResponse =
+    override fun toResponse(
+        domain: Veiculo,
+        context: DadosProprietario,
+    ): VeiculoResponse =
         VeiculoResponse(
             id = domain.id.value.toString(),
             nome = domain.nome,
             marca = domain.marca,
             modelo = domain.modelo,
             ano = domain.ano,
-            placa = domain.placa,
-            proprietarioId = domain.proprietarioId.value.toString(),
+            placa = domain.placa.value,
+            proprietario =
+                ProprietarioResponse(
+                    id = context.ref.value.toString(),
+                    nome = context.nome,
+                    numeroDocumento = context.numeroDocumento,
+                ),
         )
 }
