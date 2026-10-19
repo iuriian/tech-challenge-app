@@ -25,11 +25,15 @@ dependencies {
     // Inclusão de módulos de features do projeto
     implementation(project(":features:funcionario"))
     implementation(project(":features:peca"))
+    implementation(project(":features:cliente"))
+    implementation(project(":features:veiculo"))
 
     // Agregador de testes
     jacocoAggregation(project(":shared"))
     jacocoAggregation(project(":features:funcionario"))
     jacocoAggregation(project(":features:peca"))
+    jacocoAggregation(project(":features:cliente"))
+    jacocoAggregation(project(":features:veiculo"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
