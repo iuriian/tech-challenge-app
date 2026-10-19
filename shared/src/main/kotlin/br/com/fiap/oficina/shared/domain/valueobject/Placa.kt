@@ -4,7 +4,7 @@ package br.com.fiap.oficina.shared.domain.valueobject
 data class Placa private constructor(
     val value: String,
 ) {
-    override fun toString(): String = value.toString()
+    override fun toString(): String = value
 
     companion object {
         private val PLACA_REGEX = Regex("^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")
