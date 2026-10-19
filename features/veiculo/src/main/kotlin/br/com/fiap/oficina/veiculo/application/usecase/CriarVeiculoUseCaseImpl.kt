@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 internal class CriarVeiculoUseCaseImpl(
     private val repository: VeiculoRepository,
-    private val consultarProprietario: ConsultarProprietario,
     private val mapper: VeiculoMapper,
+    private val consultarProprietario: ConsultarProprietario,
 ) : CriarVeiculoUseCase {
     @Transactional
     override fun executar(request: VeiculoRequest): VeiculoResponse {
