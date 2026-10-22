@@ -6,6 +6,7 @@ import br.com.fiap.oficina.cliente.application.mapper.ClienteMapper
 import br.com.fiap.oficina.cliente.domain.Cliente
 import br.com.fiap.oficina.cliente.domain.ClienteId
 import br.com.fiap.oficina.cliente.domain.ClienteRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import br.com.fiap.oficina.shared.domain.valueobject.Document
 import org.springframework.stereotype.Service
@@ -44,7 +45,7 @@ internal class AtualizarClienteUseCaseImpl(
         val clienteCadastrado = repository.buscarPorDocumento(documento)
 
         if (clienteCadastrado != null && clienteCadastrado.id != cliente.id) {
-            throw EntityNotFoundException("Número de documento já cadastrado!")
+            throw BusinessRuleException("Número de documento já cadastrado!")
         }
     }
 }
