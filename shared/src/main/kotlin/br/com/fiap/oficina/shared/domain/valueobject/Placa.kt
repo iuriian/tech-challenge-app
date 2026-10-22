@@ -1,9 +1,7 @@
 package br.com.fiap.oficina.shared.domain.valueobject
 
 @ConsistentCopyVisibility
-data class Placa private constructor(
-    val value: String,
-) {
+data class Placa private constructor(val value: String) {
     override fun toString(): String = value
 
     companion object {
