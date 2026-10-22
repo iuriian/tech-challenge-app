@@ -23,6 +23,6 @@ internal data class VeiculoJPA(
     @Column(nullable = false, unique = true)
     @Size(min = 7, max = 7, message = "Input must be exactly 7 characters long")
     val placa: String,
-    @Column(name = "motorista_id", nullable = false)
+    @Column(name = "proprietario_id", nullable = false)
     val proprietarioId: UUID,
 )
