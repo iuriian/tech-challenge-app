@@ -23,15 +23,14 @@ data class Cliente private constructor(
             email: String,
             endereco: Endereco? = null,
             contatos: List<Contato> = emptyList(),
-        ): Cliente =
-            Cliente(
-                id = ClienteId.generate(),
-                nome = nome,
-                documento = documento,
-                email = email,
-                endereco = endereco,
-                contatos = contatos,
-            )
+        ): Cliente = Cliente(
+            id = ClienteId.generate(),
+            nome = nome,
+            documento = documento,
+            email = email,
+            endereco = endereco,
+            contatos = contatos,
+        )
 
         fun reconstruir(
             id: String,
@@ -40,15 +39,14 @@ data class Cliente private constructor(
             email: String,
             endereco: Endereco? = null,
             contatos: List<Contato> = emptyList(),
-        ): Cliente =
-            Cliente(
-                id = ClienteId.toUUID(id),
-                nome = nome,
-                documento = documento,
-                email = email,
-                endereco = endereco,
-                contatos = contatos,
-            )
+        ): Cliente = Cliente(
+            id = ClienteId.toUUID(id),
+            nome = nome,
+            documento = documento,
+            email = email,
+            endereco = endereco,
+            contatos = contatos,
+        )
     }
 
     fun atualizar(

@@ -8,17 +8,15 @@ import org.springframework.stereotype.Component
 
 @Component
 internal class ContatoMapper : ApplicationMapper<Contato, ContatoRequest, ContatoResponse> {
-    override fun toDomain(request: ContatoRequest): Contato =
-        Contato.criar(
-            tipo = request.tipo,
-            nome = request.nome,
-            telefone = request.telefone,
-        )
+    override fun toDomain(request: ContatoRequest): Contato = Contato.criar(
+        tipo = request.tipo,
+        nome = request.nome,
+        telefone = request.telefone,
+    )
 
-    override fun toResponse(domain: Contato): ContatoResponse =
-        ContatoResponse(
-            tipo = domain.tipo,
-            nome = domain.nome,
-            telefone = domain.telefone,
-        )
+    override fun toResponse(domain: Contato): ContatoResponse = ContatoResponse(
+        tipo = domain.tipo,
+        nome = domain.nome,
+        telefone = domain.telefone,
+    )
 }

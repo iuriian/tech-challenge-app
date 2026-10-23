@@ -28,14 +28,10 @@ internal class ClienteConfig {
 
     // Implementations
     @Bean
-    fun clienteRepository(
-        jpaRepository: ClienteJPARepository,
-        mapper: ClienteJPAMapper,
-    ): ClienteRepository = ClienteRepositoryImpl(jpaRepository, mapper)
+    fun clienteRepository(jpaRepository: ClienteJPARepository, mapper: ClienteJPAMapper): ClienteRepository =
+        ClienteRepositoryImpl(jpaRepository, mapper)
 
     @Bean
-    fun clienteQueryProvider(
-        repository: ClienteRepository,
-        mapper: ClienteQueryMapper,
-    ): ClienteQueryProvider = ClienteQueryProvider(repository, mapper)
+    fun clienteQueryProvider(repository: ClienteRepository, mapper: ClienteQueryMapper): ClienteQueryProvider =
+        ClienteQueryProvider(repository, mapper)
 }
