@@ -9,18 +9,16 @@ import org.springframework.stereotype.Component
 
 @Component
 internal class FuncionarioMapper : ApplicationMapper<Funcionario, FuncionarioRequest, FuncionarioResponse> {
-    override fun toDomain(request: FuncionarioRequest): Funcionario =
-        Funcionario.criar(
-            nome = request.nome,
-            cpf = CPF.from(request.cpf),
-            cargo = request.cargo,
-        )
+    override fun toDomain(request: FuncionarioRequest): Funcionario = Funcionario.criar(
+        nome = request.nome,
+        cpf = CPF.from(request.cpf),
+        cargo = request.cargo,
+    )
 
-    override fun toResponse(domain: Funcionario): FuncionarioResponse =
-        FuncionarioResponse(
-            id = domain.id.toString(),
-            nome = domain.nome,
-            cargoDescricao = domain.cargo.descricao,
-            cpf = domain.cpf.valor,
-        )
+    override fun toResponse(domain: Funcionario): FuncionarioResponse = FuncionarioResponse(
+        id = domain.id.toString(),
+        nome = domain.nome,
+        cargoDescricao = domain.cargo.descricao,
+        cpf = domain.cpf.valor,
+    )
 }
