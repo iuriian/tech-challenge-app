@@ -27,7 +27,6 @@ empacotado em container e entregue num cluster GKE.
 | [adr-001.md](adr-001.md) | Decisão arquitetural: PostgreSQL + Flyway sob Onion Architecture |
 | [linguagem-ubiqua.md](linguagem-ubiqua.md) | Glossário do domínio: os termos usados no código e na conversa |
 | [eventstorming.drawio](eventstorming.drawio) | Event storming do fluxo de ordem de serviço |
-| [relatorio-vulnerabilidades.md](relatorio-vulnerabilidades.md) | Levantamento manual de vulnerabilidades das dependências |
 | [TechChallengeAPI .postman_collection.json](TechChallengeAPI%20.postman_collection.json) | Coleção Postman com os endpoints da API |
 | [TechChallengeAPI-Completa-Escalabilidade.postman_collection.json](TechChallengeAPI-Completa-Escalabilidade.postman_collection.json) | Coleção Postman completa (todas as APIs) + pasta de carga do cenário de escalabilidade |
 

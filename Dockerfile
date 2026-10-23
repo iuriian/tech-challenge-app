@@ -14,6 +14,7 @@ RUN chmod +x gradlew && ./gradlew --no-daemon dependencies --quiet || true
 
 # Compila a aplicacao (testes rodam em jobs/etapas dedicados do CI)
 COPY src ./src
+COPY features ./features
 RUN ./gradlew --no-daemon clean bootJar -x test \
     && cp build/libs/*.jar application.jar
 
