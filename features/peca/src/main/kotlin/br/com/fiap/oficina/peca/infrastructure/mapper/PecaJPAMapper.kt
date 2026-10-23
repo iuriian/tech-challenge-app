@@ -2,7 +2,7 @@ package br.com.fiap.oficina.peca.infrastructure.mapper
 
 import br.com.fiap.oficina.peca.domain.Peca
 import br.com.fiap.oficina.peca.infrastructure.persistence.PecaJPA
-import br.com.fiap.oficina.shared.infrastructure.mapper.JPAMapper
+import br.com.fiap.oficina.shared.domain.mapper.JPAMapper
 
 internal class PecaJPAMapper : JPAMapper<Peca, PecaJPA> {
     override fun toDomain(jpa: PecaJPA): Peca = Peca.reconstruir(

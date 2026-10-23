@@ -67,7 +67,13 @@ class ContatoTest {
     @DisplayName("Dado contatos com dados diferentes, quando comparar, então não devem ser iguais")
     fun givenContatosWithDifferentData_whenComparing_thenNotEqual() {
         val contato = ClienteFixtures.contato()
-        val outro = contato.copy(telefone = "1133334444")
+        val outro =
+            Contato.reconstruir(
+                id = contato.id.toString(),
+                tipo = contato.tipo,
+                nome = contato.nome,
+                telefone = "1133334444",
+            )
 
         assertNotEquals(contato, outro)
         assertEquals(contato.id, outro.id)

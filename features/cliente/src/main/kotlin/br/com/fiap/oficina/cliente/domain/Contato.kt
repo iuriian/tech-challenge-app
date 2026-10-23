@@ -1,6 +1,7 @@
 package br.com.fiap.oficina.cliente.domain
 
-data class Contato(val id: ContatoId, val tipo: String, val nome: String, val telefone: String) {
+@ConsistentCopyVisibility
+data class Contato private constructor(val id: ContatoId, val tipo: String, val nome: String, val telefone: String) {
     companion object {
         fun criar(tipo: String, nome: String, telefone: String): Contato {
             require(tipo.isNotBlank()) { "Tipo do contato é obrigatório" }

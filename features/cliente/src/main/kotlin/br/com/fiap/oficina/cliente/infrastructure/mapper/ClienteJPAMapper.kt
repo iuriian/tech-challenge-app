@@ -4,8 +4,8 @@ import br.com.fiap.oficina.cliente.domain.Cliente
 import br.com.fiap.oficina.cliente.domain.tipoPessoa
 import br.com.fiap.oficina.cliente.infrastructure.persistence.ClienteJPA
 import br.com.fiap.oficina.cliente.infrastructure.persistence.DocumentoEmbeddable
+import br.com.fiap.oficina.shared.domain.mapper.JPAMapper
 import br.com.fiap.oficina.shared.domain.valueobject.Document
-import br.com.fiap.oficina.shared.infrastructure.mapper.JPAMapper
 
 internal class ClienteJPAMapper(
     private val enderecoMapper: EnderecoJPAMapper = EnderecoJPAMapper(),

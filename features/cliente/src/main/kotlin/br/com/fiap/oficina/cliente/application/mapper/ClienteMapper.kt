@@ -5,7 +5,7 @@ import br.com.fiap.oficina.cliente.application.dto.ClienteResponse
 import br.com.fiap.oficina.cliente.domain.Cliente
 import br.com.fiap.oficina.cliente.domain.TipoPessoa
 import br.com.fiap.oficina.cliente.domain.tipoPessoa
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.ApplicationMapper
 import br.com.fiap.oficina.shared.domain.valueobject.Document
 import org.springframework.stereotype.Component
 

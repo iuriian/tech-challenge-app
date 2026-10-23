@@ -3,7 +3,7 @@ package br.com.fiap.oficina.peca.application.mapper
 import br.com.fiap.oficina.peca.application.dto.PecaRequest
 import br.com.fiap.oficina.peca.application.dto.PecaResponse
 import br.com.fiap.oficina.peca.domain.Peca
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.ApplicationMapper
 import org.springframework.stereotype.Component
 
 @Component

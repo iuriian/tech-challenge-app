@@ -1,6 +1,6 @@
 package br.com.fiap.oficina.cliente.domain
 
-import br.com.fiap.oficina.shared.domain.valueobject.AggregateId
+import br.com.fiap.oficina.shared.domain.AggregateId
 import java.util.UUID
 
 data class EnderecoId(override val value: UUID) : AggregateId() {

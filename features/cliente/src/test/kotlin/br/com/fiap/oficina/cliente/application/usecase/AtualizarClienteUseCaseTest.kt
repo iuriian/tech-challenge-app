@@ -6,6 +6,7 @@ import br.com.fiap.oficina.cliente.application.mapper.ContatoMapper
 import br.com.fiap.oficina.cliente.application.mapper.EnderecoMapper
 import br.com.fiap.oficina.cliente.domain.Cliente
 import br.com.fiap.oficina.cliente.domain.ClienteRepository
+import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import io.mockk.every
 import io.mockk.mockk
@@ -81,9 +82,7 @@ class AtualizarClienteUseCaseTest {
     @DisplayName("Dado documento pertencente ao próprio cliente, quando atualizar cliente, então deve salvar")
     fun givenDocumentoOwnedBySameCliente_whenUpdatingCliente_thenSave() {
         val cliente = ClienteFixtures.cliente()
-        val mesmoCliente = cliente.copy(
-            documento = ClienteFixtures.cliente(documento = ClienteFixtures.CPF_OUTRO).documento,
-        )
+        val mesmoCliente = ClienteFixtures.cliente(documento = ClienteFixtures.CPF_OUTRO)
 
         every { repositoryMock.buscarPorId(any()) } returns cliente
         every { repositoryMock.buscarPorDocumento(any()) } returns mesmoCliente
@@ -166,7 +165,7 @@ class AtualizarClienteUseCaseTest {
         val request = ClienteFixtures.clienteRequest(numeroDocumento = ClienteFixtures.CPF_OUTRO)
 
         val exception =
-            assertFailsWith<EntityNotFoundException> {
+            assertFailsWith<BusinessRuleException> {
                 usecase.executar(ClienteFixtures.ID_1, request)
             }
 

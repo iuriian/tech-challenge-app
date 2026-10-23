@@ -3,7 +3,7 @@ package br.com.fiap.oficina.cliente.application.mapper
 import br.com.fiap.oficina.cliente.application.dto.EnderecoRequest
 import br.com.fiap.oficina.cliente.application.dto.EnderecoResponse
 import br.com.fiap.oficina.cliente.domain.Endereco
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.ApplicationMapper
 import org.springframework.stereotype.Component
 
 @Component

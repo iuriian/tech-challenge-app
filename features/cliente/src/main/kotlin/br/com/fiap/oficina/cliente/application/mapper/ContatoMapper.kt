@@ -3,7 +3,7 @@ package br.com.fiap.oficina.cliente.application.mapper
 import br.com.fiap.oficina.cliente.application.dto.ContatoRequest
 import br.com.fiap.oficina.cliente.application.dto.ContatoResponse
 import br.com.fiap.oficina.cliente.domain.Contato
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.ApplicationMapper
 import org.springframework.stereotype.Component
 
 @Component

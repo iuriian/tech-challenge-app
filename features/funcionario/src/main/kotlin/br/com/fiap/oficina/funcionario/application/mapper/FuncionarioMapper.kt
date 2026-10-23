@@ -3,7 +3,7 @@ package br.com.fiap.oficina.funcionario.application.mapper
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.domain.Funcionario
-import br.com.fiap.oficina.shared.application.mapper.ApplicationMapper
+import br.com.fiap.oficina.shared.domain.mapper.ApplicationMapper
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
 import org.springframework.stereotype.Component
 

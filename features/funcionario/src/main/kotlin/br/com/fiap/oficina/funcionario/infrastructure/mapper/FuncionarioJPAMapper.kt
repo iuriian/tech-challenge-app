@@ -2,8 +2,8 @@ package br.com.fiap.oficina.funcionario.infrastructure.mapper
 
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.infrastructure.persistence.FuncionarioJPA
+import br.com.fiap.oficina.shared.domain.mapper.JPAMapper
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
-import br.com.fiap.oficina.shared.infrastructure.mapper.JPAMapper
 
 internal class FuncionarioJPAMapper : JPAMapper<Funcionario, FuncionarioJPA> {
     override fun toDomain(jpa: FuncionarioJPA): Funcionario = Funcionario

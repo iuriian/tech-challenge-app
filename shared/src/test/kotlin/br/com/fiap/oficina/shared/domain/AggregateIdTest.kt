@@ -1,6 +1,5 @@
 package br.com.fiap.oficina.shared.domain
 
-import br.com.fiap.oficina.shared.domain.valueobject.AggregateId
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.DisplayName

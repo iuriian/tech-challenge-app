@@ -2,7 +2,8 @@ package br.com.fiap.oficina.cliente.domain
 
 import br.com.fiap.oficina.shared.domain.valueobject.Document
 
-data class Cliente(
+@ConsistentCopyVisibility
+data class Cliente private constructor(
     val id: ClienteId,
     val nome: String,
     val documento: Document,
