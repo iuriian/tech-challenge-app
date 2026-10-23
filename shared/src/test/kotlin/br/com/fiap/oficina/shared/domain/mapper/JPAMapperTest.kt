@@ -1,6 +1,6 @@
-package br.com.fiap.oficina.shared.infrastructure.mapper
+package br.com.fiap.oficina.shared.domain.mapper
 
-import br.com.fiap.oficina.shared.domain.valueobject.AggregateId
+import br.com.fiap.oficina.shared.domain.AggregateId
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
 import br.com.fiap.oficina.shared.domain.valueobject.Document
 import org.junit.jupiter.api.Assertions.assertEquals

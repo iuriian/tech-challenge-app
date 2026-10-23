@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.shared.application.mapper
+package br.com.fiap.oficina.shared.domain.mapper
 
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
 import br.com.fiap.oficina.shared.domain.valueobject.Document
