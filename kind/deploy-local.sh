@@ -115,7 +115,10 @@ kubectl create configmap postgres-initdb \
   --from-file="$ROOT_DIR/conf/init-db/" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" "$K8S_DIR/app/configmap.yaml" \
+sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" \
+    -e "s|__DB_HOST__|postgres|g" \
+    -e "s|__DB_SSLMODE__|disable|g" \
+    "$K8S_DIR/app/configmap.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 
 # ---------------------------------------------------------------------------
