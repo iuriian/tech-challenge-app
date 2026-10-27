@@ -20,8 +20,6 @@ NAMESPACE="${3:-default}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Tempo maximo (segundos) de espera pelo IP externo do Service do Keycloak.
-KEYCLOAK_IP_TIMEOUT="${KEYCLOAK_IP_TIMEOUT:-300}"
 ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-900s}"
 
 if [[ -z "$IMAGE" ]]; then
@@ -48,23 +46,6 @@ if ! kubectl get secret db-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
     -n "$NAMESPACE"
 fi
 
-#if ! kubectl get secret keycloak-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
-#  echo "==> Criando secret keycloak-credentials"
-#  if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
-#    # O Service do Keycloak e LoadBalancer: no GKE o console de admin fica
-#    # acessivel pela internet. Deixar admin/admin ai e um convite.
-#    echo "!! ATENCAO: KEYCLOAK_ADMIN_PASSWORD nao definido - usando a senha padrao 'admin'." >&2
-#    echo "!!          Aceitavel apenas em ambiente local. No GKE, defina o secret antes:" >&2
-#    echo "!!          kubectl create secret generic keycloak-credentials \\" >&2
-#    echo "!!            --from-literal=KEYCLOAK_ADMIN_USER=admin \\" >&2
-#    echo "!!            --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE' -n $NAMESPACE" >&2
-#  fi
-#  kubectl create secret generic keycloak-credentials \
-#    --from-literal=KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}" \
-#    --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
-#    -n "$NAMESPACE"
-#fi
-
 # ---------------------------------------------------------------------------
 # 1b. Checksum dos secrets, injetado no pod template dos Deployments.
 # E o que faz uma senha corrigida realmente chegar ao pod: o template muda, o
@@ -77,22 +58,18 @@ else
   HASHER=(shasum -a 256)
 fi
 
-#SECRETS_HASH="$(kubectl get secret db-credentials keycloak-credentials \
-#  -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}={.data}{end}' \
-#  | "${HASHER[@]}" | cut -c1-16)"
-#echo "==> Checksum dos secrets: $SECRETS_HASH"
+SECRETS_HASH="$(kubectl get secret db-credentials \
+  -n "$NAMESPACE" -o jsonpath='{.metadata.name}={.data}' \
+  | "${HASHER[@]}" | cut -c1-16)"
+echo "==> Checksum dos secrets: $SECRETS_HASH"
 
 # ---------------------------------------------------------------------------
 # 2. ConfigMaps gerados a partir dos arquivos versionados em conf/
-#    (evita duplicar realm e script de init entre docker-compose e Kubernetes)
+#    (evita duplicar o script de init entre docker-compose e Kubernetes)
 # ---------------------------------------------------------------------------
 echo "==> Aplicando ConfigMaps"
 kubectl create configmap postgres-initdb \
   --from-file="$ROOT_DIR/conf/init-db/" \
-  -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create configmap keycloak-realm \
-  --from-file=realm.json="$ROOT_DIR/conf/realm-export.json" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f "$SCRIPT_DIR/app/configmap.yaml" -n "$NAMESPACE"
@@ -107,52 +84,12 @@ kubectl apply -f "$SCRIPT_DIR/postgres/deployment.yaml" -n "$NAMESPACE"
 kubectl rollout status deployment/postgres -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
 
 # ---------------------------------------------------------------------------
-# 4. Service do Keycloak + descoberta do IP externo
-#    O issuer dos tokens precisa ser a URL publica; o Deployment so e aplicado
-#    depois que esse endereco e conhecido.
-# ---------------------------------------------------------------------------
-echo "==> Aplicando Service do Keycloak"
-kubectl apply -f "$SCRIPT_DIR/keycloak/service.yaml" -n "$NAMESPACE"
-
-echo "==> Aguardando IP externo do Keycloak (ate ${KEYCLOAK_IP_TIMEOUT}s)"
-KEYCLOAK_IP=""
-ELAPSED=0
-while [[ $ELAPSED -lt $KEYCLOAK_IP_TIMEOUT ]]; do
-  KEYCLOAK_IP="$(kubectl get svc keycloak -n "$NAMESPACE" \
-    -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
-  [[ -n "$KEYCLOAK_IP" ]] && break
-  sleep 10
-  ELAPSED=$((ELAPSED + 10))
-done
-
-if [[ -n "$KEYCLOAK_IP" ]]; then
-  KEYCLOAK_URL="http://${KEYCLOAK_IP}:8080"
-else
-  # Sem IP publico o deploy continua, mas apenas tokens emitidos de dentro do
-  # cluster serao aceitos (issuer interno).
-  KEYCLOAK_URL="http://keycloak:8080"
-  echo "!! IP externo nao atribuido a tempo; usando issuer interno $KEYCLOAK_URL" >&2
-fi
-echo "==> Keycloak URL: $KEYCLOAK_URL"
-
-# ---------------------------------------------------------------------------
-# 5. Keycloak
-# ---------------------------------------------------------------------------
-echo "==> Aplicando Keycloak"
-echo "    O primeiro boot leva ~2 min (augmentation do Quarkus + import do realm)."
-echo "    Ate la o startupProbe registra 'connection refused' na porta 9000: e esperado."
-echo "    NAO interrompa - o Ctrl+C aqui mata o script inteiro, antes de aplicar a app."
-sed -e "s|__KEYCLOAK_URL__|${KEYCLOAK_URL}|g" \
-    -e "s|__SECRETS_HASH__|${SECRETS_HASH}|g" "$SCRIPT_DIR/keycloak/deployment.yaml" \
-  | kubectl apply -n "$NAMESPACE" -f -
-kubectl rollout status deployment/keycloak -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
-
-# ---------------------------------------------------------------------------
-# 6. Aplicacao
+# 4. Aplicacao
+#    O emissor dos tokens e externo ao cluster: chega pelo app-config
+#    (AUTH_ISSUER_URI), sem Service nem descoberta de IP aqui.
 # ---------------------------------------------------------------------------
 echo "==> Aplicando aplicacao"
 sed -e "s|__IMAGE__|${IMAGE}|g" \
-    -e "s|__KEYCLOAK_URL__|${KEYCLOAK_URL}|g" \
     -e "s|__SECRETS_HASH__|${SECRETS_HASH}|g" "$SCRIPT_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 kubectl rollout status deployment/app -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
@@ -163,7 +100,7 @@ echo "==> Aplicando HPA"
 kubectl apply -f "$SCRIPT_DIR/app/hpa.yaml" -n "$NAMESPACE"
 
 # ---------------------------------------------------------------------------
-# 7. Resumo
+# 5. Resumo
 # ---------------------------------------------------------------------------
 APP_IP="$(kubectl get svc app -n "$NAMESPACE" \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
@@ -179,6 +116,5 @@ if [[ -n "$APP_IP" ]]; then
 else
   echo " App      : IP externo ainda nao atribuido (kubectl get svc app -w)"
 fi
-echo " Keycloak : $KEYCLOAK_URL"
 echo "=========================================="
 kubectl get pods,svc -n "$NAMESPACE"
