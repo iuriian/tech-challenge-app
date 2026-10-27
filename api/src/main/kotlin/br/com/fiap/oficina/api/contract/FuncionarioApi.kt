@@ -20,9 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 interface FuncionarioApi {
     @PostMapping
     @Operation(summary = "Criar um novo funcionário", description = "Cadastra um novo funcionário no sistema")
-    fun cadastrar(
-        @Valid @RequestBody request: FuncionarioRequest,
-    ): ResponseEntity<FuncionarioResponse>
+    fun cadastrar(@Valid @RequestBody request: FuncionarioRequest): ResponseEntity<FuncionarioResponse>
 
     @GetMapping
     @Operation(
@@ -36,9 +34,7 @@ interface FuncionarioApi {
         summary = "Buscar funcionário por ID",
         description = "Busca um funcionário através do seu identificador único",
     )
-    fun buscarPorId(
-        @PathVariable id: String,
-    ): FuncionarioResponse
+    fun buscarPorId(@PathVariable id: String): FuncionarioResponse
 
     @GetMapping("/nome/{nome}")
     @Operation(summary = "Buscar funcionário por nome", description = "Busca um funcionário através do seu nome")
@@ -52,17 +48,12 @@ interface FuncionarioApi {
         summary = "Alterar dados de um funcionário",
         description = "Atualiza as informações de um funcionário existente",
     )
-    fun alterar(
-        @PathVariable id: String,
-        @Valid @RequestBody request: FuncionarioRequest,
-    ): FuncionarioResponse
+    fun alterar(@PathVariable id: String, @Valid @RequestBody request: FuncionarioRequest): FuncionarioResponse
 
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Deletar um funcionário",
         description = "Remove um funcionário do sistema através do seu identificador único",
     )
-    fun deletar(
-        @PathVariable id: String,
-    )
+    fun deletar(@PathVariable id: String)
 }
