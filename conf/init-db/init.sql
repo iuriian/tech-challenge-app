@@ -6,12 +6,6 @@
 -- SELECT 'CREATE DATABASE oficina'
 -- WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'oficina')\gexec
 
-SELECT 'CREATE DATABASE keycloak'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
-
-\c keycloak
-
-
 SELECT 'CREATE DATABASE oficina'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'oficina')\gexec
 
