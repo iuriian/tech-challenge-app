@@ -258,7 +258,13 @@ jobs:
             -n ${{ env.KUBE_NAMESPACE }}
 
       - name: Deploy to Kubernetes
+        env:
+          AUTH_ISSUER_URI: ${{ vars.AUTH_ISSUER_URI }}
         run: |
+          if [ -z "$AUTH_ISSUER_URI" ]; then
+            echo "::error::Variable AUTH_ISSUER_URI ausente no Environment 'staging' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
+            exit 1
+          fi
           chmod +x ./k8s/deploy.sh
           echo "🚀 Deploying image: ${{ needs.build.outputs.image }}"
           ./k8s/deploy.sh "${{ needs.build.outputs.image }}" staging ${{ env.KUBE_NAMESPACE }}
