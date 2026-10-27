@@ -41,7 +41,7 @@ Além do fluxo da ordem, o sistema mantém:
 | **Catálogo de serviços** | Serviços oferecidos, com preço, tempo estimado e ativação/desativação |
 | **Ordens de serviço** | Ciclo completo, orçamento calculado e métrica de tempo médio de execução |
 
-O acesso é controlado por **perfis** emitidos pelo Keycloak e verificados em cada
+O acesso é controlado por **perfis** vindos do JWT e verificados em cada
 endpoint: `ADMIN`, `ATENDENTE`, `MECANICO` e `CLIENTE`. Um cliente não cria ordem de
 serviço; um mecânico não cadastra peça no catálogo.
 
@@ -92,8 +92,11 @@ de suporte — pull da imagem, escala do HPA, leitura das senhas e validação d
 | Componente | Imagem / tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST do domínio. Aplica as migrations do Flyway no boot |
-| **keycloak** | `quay.io/keycloak/keycloak:26.2.1` | Service `LoadBalancer` 8080 | Emissor dos tokens JWT, realm `Fiap` importado de `conf/realm-export.json` |
-| **postgres** | `postgres:16-alpine` | Service `ClusterIP` 5432 | Bases `oficina` e `keycloak` |
+| **postgres** | `postgres:16-alpine` | Service `ClusterIP` 5432 | Base `oficina` |
+
+O emissor dos tokens é externo: a aplicação é apenas um *resource server*, que lê
+`AUTH_ISSUER_URI` e `AUTH_AUDIENCE` e busca o JWKS em
+`${AUTH_ISSUER_URI}/.well-known/jwks.json`.
 
 **Organização interna do código**
 
@@ -133,7 +136,7 @@ cada commit.**
 |---|---|
 | Cluster GKE | `tech-challenge-staging`, zonal em `us-central1-a`, release channel REGULAR, VPC-native |
 | Node pool `primary` | `e2-medium`, disco `pd-balanced` de 30 GB, **spot VMs**, autoscaling de 1 a 3 nós, auto-repair e auto-upgrade |
-| Secret Manager | `<cluster>-db-password` e `<cluster>-keycloak-admin-password`, com senhas aleatórias geradas no apply |
+| Secret Manager | `<cluster>-db-password`, com senha aleatória gerada no apply |
 | Service Account | `github-actions-cd`, com papéis de `container.developer` e acesso de leitura aos secrets |
 | APIs do GCP | container, compute, logging, monitoring, secretmanager |
 
@@ -143,11 +146,10 @@ cada commit.**
 |---|---|
 | `Deployment app` | Sem `replicas` fixo — quem controla é o HPA. `RollingUpdate` com `maxSurge: 0`. initContainer `wait-for-db`. Probes de startup, readiness e liveness em `/actuator/health`. Requests 200m/512Mi, limits 1 CPU/1Gi |
 | `HPA app` | 1 a 3 réplicas, alvo de 70% de CPU sobre o *request*, janela de estabilização de 5 min na redução |
-| `Deployment keycloak` | Realm importado de ConfigMap, `KC_HOSTNAME` com o IP público do LoadBalancer |
 | `Deployment postgres` | Estratégia `Recreate`, probes com `pg_isready` |
 | `PVC postgres-data` | 10Gi, `ReadWriteOnce` |
-| ConfigMaps | `app-config`, `postgres-initdb`, `keycloak-realm` — os dois últimos gerados a partir de `conf/`, os mesmos arquivos usados pelo docker-compose |
-| Secrets | `db-credentials`, `keycloak-credentials` (do Secret Manager) e `ghcr-creds` (pull da imagem) |
+| ConfigMaps | `app-config` e `postgres-initdb` — o segundo gerado a partir de `conf/`, os mesmos arquivos usados pelo docker-compose |
+| Secrets | `db-credentials` (do Secret Manager) e `ghcr-creds` (pull da imagem) |
 
 ### 3.4 Fluxo de deploy
 
@@ -168,11 +170,8 @@ Dentro do `deploy-staging`, a ordem importa e está encapsulada no `k8s/deploy.s
 
 1. Secrets e ConfigMaps.
 2. PVC antes do Deployment do PostgreSQL — na ordem inversa o pod fica `Pending`.
-3. Service do Keycloak e **espera pelo IP externo** — o `issuer` do token precisa ser
-   a URL pública, então o endereço tem de ser conhecido antes de subir o Keycloak.
-4. Deployment do Keycloak com `KC_HOSTNAME` já apontando para esse IP.
-5. Aplicação, com o digest da imagem e o issuer público.
-6. HPA por último: aplicado antes, o alvo não existiria.
+3. Aplicação, com o digest da imagem. O issuer dos tokens vem do `app-config`.
+4. HPA por último: aplicado antes, o alvo não existiria.
 
 Detalhamento completo, incluindo rollback e diagnóstico de falhas: [`cd.md`](cd.md).
 
@@ -199,7 +198,7 @@ cp .env.example .env     # ou ./create-env.sh
 **Opção A — infraestrutura em container, aplicação na IDE** *(recomendado para desenvolver)*
 
 ```bash
-docker compose up -d db keycloak
+docker compose up -d db
 ./gradlew bootRun                 # Windows: gradlew.bat bootRun
 ```
 
@@ -215,8 +214,7 @@ docker compose down               # para encerrar
 |---|---|---|
 | Aplicação (perfil `full`) | <http://localhost:8090> | — |
 | Aplicação (`bootRun`) | <http://localhost:8080> | — |
-| Swagger UI | `<url-da-app>/swagger-ui/index.html` | via Keycloak |
-| Keycloak | <http://localhost:8081> | `admin` / `admin` |
+| Swagger UI | `<url-da-app>/swagger-ui/index.html` | bearer JWT |
 | PostgreSQL | `localhost:5432` | `user` / `password` |
 | Nginx (perfil `full`) | <http://localhost> | — |
 
@@ -224,21 +222,12 @@ Para usar os domínios do Nginx, acrescente ao `hosts` do sistema (o conteúdo e
 `conf/hosts`):
 
 ```
-127.0.0.1 sso.postech.com.br
 127.0.0.1 api.postech.com.br
 ```
 
-**Usuários pré-configurados no realm `Fiap`**
-
-| Usuário | Senha | Perfil |
-|---|---|---|
-| `admin` | `admin` | ADMIN |
-| `atendente` | `atendente` | ATENDENTE |
-| `mecanico` | `mecanico` | MECANICO |
-| `clientepadrao` | `clientepadrao` | CLIENTE |
-
-**Autenticando no Swagger UI:** clique em **Authorize**, informe o client `oficina` e
-faça login com um dos usuários acima. O token é reaproveitado nas chamadas seguintes.
+**Autenticando no Swagger UI:** obtenha um bearer no emissor configurado em
+`AUTH_ISSUER_URI`, clique em **Authorize** e informe o token. Ele é reaproveitado nas
+chamadas seguintes.
 
 **Opção C — Kubernetes local com kind** *(valida os mesmos manifests do GKE)*
 
@@ -249,7 +238,7 @@ APP_HOST_PORT=19000 ./kind/deploy-local.sh  # se as portas padrão estiverem ocu
 ./kind/down.sh                              # destrói o cluster
 ```
 
-Portas padrão: aplicação em `18080`, Keycloak em `18081`. Os scripts são bash — no
+Porta padrão da aplicação: `18080`. Os scripts são bash — no
 Windows, use Git Bash ou WSL. Detalhes em [`kind/README.md`](../kind/README.md).
 
 **Rodando os testes**
@@ -271,7 +260,7 @@ git push -u origin release/1.1.0
 
 O push dispara o workflow `CD - Staging`, que builda, testa, promove e faz o deploy.
 A URL fica publicada no Environment `staging` do GitHub, e o resumo do job traz os
-links da aplicação, do Swagger e do Keycloak.
+links da aplicação e do Swagger.
 
 **Manualmente**, com `kubectl` já autenticado no cluster:
 
@@ -287,10 +276,6 @@ kubectl create namespace tech-challenge-staging
 kubectl create secret generic db-credentials \
   --from-literal=POSTGRES_USER=user \
   --from-literal=POSTGRES_PASSWORD='SENHA_FORTE' -n tech-challenge-staging
-
-kubectl create secret generic keycloak-credentials \
-  --from-literal=KEYCLOAK_ADMIN_USER=admin \
-  --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE' -n tech-challenge-staging
 
 kubectl create secret docker-registry ghcr-creds \
   --docker-server=ghcr.io --docker-username=SEU_USUARIO \
@@ -387,7 +372,7 @@ staging. Em produção, mantenha a proteção ligada.
 | **OpenAPI JSON** | `/v3/api-docs` |
 
 A collection cobre todos os recursos descritos na seção 3.2. Para os endpoints
-protegidos, obtenha o token no Keycloak com um dos usuários da tabela em 4.1.
+protegidos, obtenha o token no emissor configurado em `AUTH_ISSUER_URI`.
 
 ---
 
@@ -400,7 +385,7 @@ Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 1. `terraform apply` e o cluster criado no console do GCP.
 2. Abertura de um Pull Request e a CI reprovando/aprovando com os comentários no PR.
 3. Push em `release/*` e o CD executando: build, smoke test, promoção e deploy.
-4. Aplicação no ar em staging: Swagger autenticado via Keycloak e um fluxo completo de
+4. Aplicação no ar em staging: Swagger autenticado com bearer JWT e um fluxo completo de
    ordem de serviço, do cadastro à entrega.
 5. `kubectl get pods,hpa` mostrando o escalonamento e os probes.
 

@@ -24,14 +24,14 @@ do veículo. O acesso ao sistema é controlado por **perfis** (ADMIN, ATENDENTE,
 
 ## Perfis de acesso (Roles)
 
-Definidos no Keycloak e aplicados via `@RolesAllowed` (ver `KeycloakJwtRoleConverter`, `SecurityConfig`).
+Chegam no claim `roles` do JWT emitido pelo provedor externo e são aplicados nas regras por rota e em `@RolesAllowed` (ver `SecurityConfig`).
 
 | Termo         | Significado                                                                | Onde aparece                                    |
 |---------------|----------------------------------------------------------------------------|-------------------------------------------------|
-| **ADMIN**     | Administrador do sistema; acesso total.                                    | `@RolesAllowed("ADMIN")`, Keycloak              |
+| **ADMIN**     | Administrador do sistema; acesso total.                                    | `@RolesAllowed("ADMIN")`                        |
 | **ATENDENTE** | Recepciona o cliente, cadastra clientes/veículos e abre/gerencia serviços. | `@RolesAllowed("ATENDENTE")` nos controllers    |
-| **MECANICO**  | Profissional que executa o diagnóstico e os reparos.                       | Perfil no Keycloak (ainda sem entidade própria) |
-| **CLIENTE**   | Dono do veículo / solicitante do serviço.                                  | Perfil no Keycloak; entidade `Cliente`          |
+| **MECANICO**  | Profissional que executa o diagnóstico e os reparos.                       | Claim `roles` (ainda sem entidade própria)      |
+| **CLIENTE**   | Dono do veículo / solicitante do serviço.                                  | Claim `roles`; entidade `Cliente`               |
 
 ---
 
