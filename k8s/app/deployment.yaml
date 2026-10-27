@@ -50,16 +50,16 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: POSTGRES_DB
-            - name: KEYCLOAK_REALM
+            - name: AUTH_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
                   name: app-config
-                  key: KEYCLOAK_REALM
-            - name: KEYCLOAK_CLIENT_ID
+                  key: AUTH_ISSUER_URI
+            - name: AUTH_AUDIENCE
               valueFrom:
                 configMapKeyRef:
                   name: app-config
-                  key: KEYCLOAK_CLIENT_ID
+                  key: AUTH_AUDIENCE
             - name: DB_URL
               value: "jdbc:postgresql://postgres:5432/$(POSTGRES_DB)"
             - name: DB_USERNAME
