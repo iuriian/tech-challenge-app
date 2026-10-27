@@ -84,10 +84,8 @@ internal class OpenApiConfig {
             val componentes = openApi.components ?: Components().also { openApi.components = it }
             val conversor = ModelConverters.getInstance()
 
-            (
-                conversor.read(ValidationErrorResponse::class.java) +
-                    conversor.read(ValidationErrorResponse::class.java)
-            ).forEach { (nome, schema) -> componentes.addSchemas(nome, schema) }
+            (conversor.read(ErrorResponse::class.java) + conversor.read(ValidationErrorResponse::class.java))
+                .forEach { (nome, schema) -> componentes.addSchemas(nome, schema) }
         }
     }
 }
