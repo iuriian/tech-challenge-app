@@ -48,22 +48,22 @@ if ! kubectl get secret db-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
     -n "$NAMESPACE"
 fi
 
-if ! kubectl get secret keycloak-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
-  echo "==> Criando secret keycloak-credentials"
-  if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
-    # O Service do Keycloak e LoadBalancer: no GKE o console de admin fica
-    # acessivel pela internet. Deixar admin/admin ai e um convite.
-    echo "!! ATENCAO: KEYCLOAK_ADMIN_PASSWORD nao definido - usando a senha padrao 'admin'." >&2
-    echo "!!          Aceitavel apenas em ambiente local. No GKE, defina o secret antes:" >&2
-    echo "!!          kubectl create secret generic keycloak-credentials \\" >&2
-    echo "!!            --from-literal=KEYCLOAK_ADMIN_USER=admin \\" >&2
-    echo "!!            --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE' -n $NAMESPACE" >&2
-  fi
-  kubectl create secret generic keycloak-credentials \
-    --from-literal=KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}" \
-    --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
-    -n "$NAMESPACE"
-fi
+#if ! kubectl get secret keycloak-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
+#  echo "==> Criando secret keycloak-credentials"
+#  if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
+#    # O Service do Keycloak e LoadBalancer: no GKE o console de admin fica
+#    # acessivel pela internet. Deixar admin/admin ai e um convite.
+#    echo "!! ATENCAO: KEYCLOAK_ADMIN_PASSWORD nao definido - usando a senha padrao 'admin'." >&2
+#    echo "!!          Aceitavel apenas em ambiente local. No GKE, defina o secret antes:" >&2
+#    echo "!!          kubectl create secret generic keycloak-credentials \\" >&2
+#    echo "!!            --from-literal=KEYCLOAK_ADMIN_USER=admin \\" >&2
+#    echo "!!            --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE' -n $NAMESPACE" >&2
+#  fi
+#  kubectl create secret generic keycloak-credentials \
+#    --from-literal=KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}" \
+#    --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
+#    -n "$NAMESPACE"
+#fi
 
 # ---------------------------------------------------------------------------
 # 1b. Checksum dos secrets, injetado no pod template dos Deployments.
@@ -77,10 +77,10 @@ else
   HASHER=(shasum -a 256)
 fi
 
-SECRETS_HASH="$(kubectl get secret db-credentials keycloak-credentials \
-  -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}={.data}{end}' \
-  | "${HASHER[@]}" | cut -c1-16)"
-echo "==> Checksum dos secrets: $SECRETS_HASH"
+#SECRETS_HASH="$(kubectl get secret db-credentials keycloak-credentials \
+#  -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}={.data}{end}' \
+#  | "${HASHER[@]}" | cut -c1-16)"
+#echo "==> Checksum dos secrets: $SECRETS_HASH"
 
 # ---------------------------------------------------------------------------
 # 2. ConfigMaps gerados a partir dos arquivos versionados em conf/
