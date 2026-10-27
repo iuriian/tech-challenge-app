@@ -72,10 +72,6 @@ spec:
                 secretKeyRef:
                   name: db-credentials
                   key: POSTGRES_PASSWORD
-            - name: KEYCLOAK_URL
-              value: "__KEYCLOAK_URL__"
-            - name: KEYCLOAK_JWK_SET_URI
-              value: "http://keycloak:8080/realms/$(KEYCLOAK_REALM)/protocol/openid-connect/certs"
           startupProbe:
             httpGet:
               path: /actuator/health/readiness
