@@ -22,8 +22,18 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-900s}"
 
+# Emissor dos tokens. Substituido no app-config: a aplicacao busca o JWKS nesse
+# endereco na subida, entao um valor vazio ou com o placeholder derruba o pod.
+AUTH_ISSUER_URI="${AUTH_ISSUER_URI:-}"
+
 if [[ -z "$IMAGE" ]]; then
   echo "Uso: $0 <IMAGEM> [AMBIENTE] [NAMESPACE]" >&2
+  exit 1
+fi
+
+if [[ -z "$AUTH_ISSUER_URI" ]]; then
+  echo "ERRO: AUTH_ISSUER_URI nao definido - o app-config ficaria com o placeholder" >&2
+  echo "      e a aplicacao nao subiria. Ex.: AUTH_ISSUER_URI=https://auth.exemplo $0 ..." >&2
   exit 1
 fi
 
@@ -72,7 +82,8 @@ kubectl create configmap postgres-initdb \
   --from-file="$ROOT_DIR/conf/init-db/" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -f "$SCRIPT_DIR/app/configmap.yaml" -n "$NAMESPACE"
+sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" "$SCRIPT_DIR/app/configmap.yaml" \
+  | kubectl apply -n "$NAMESPACE" -f -
 
 # ---------------------------------------------------------------------------
 # 3. PostgreSQL
