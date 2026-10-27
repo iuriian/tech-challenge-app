@@ -7,9 +7,11 @@ plugins {
 }
 rootProject.name = "oficinamecanica"
 
-include("shared")
-
-include("features:funcionario")
-include("features:peca")
-include("features:cliente")
-include("features:veiculo")
+include(
+    "shared",
+    "features:funcionario",
+    "features:peca",
+    "features:cliente",
+    "features:veiculo",
+    "api",
+)
