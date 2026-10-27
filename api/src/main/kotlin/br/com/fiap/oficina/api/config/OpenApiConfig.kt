@@ -50,6 +50,7 @@ internal class OpenApiConfig {
 
                     respostas.erroInterno()
                     respostas.naoAutenticado()
+                    respostas.semPermissao()
 
                     if (metodo in MUTACOES) {
                         respostas.dadosInvalidos()
