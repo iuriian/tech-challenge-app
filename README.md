@@ -2,9 +2,9 @@
 
 Sistema de gestão de uma **oficina mecânica**: do cadastro do cliente e do veículo até
 a entrega do serviço executado, passando por diagnóstico, orçamento, aprovação e
-controle de estoque de peças. API REST em Kotlin/Spring Boot, autenticação e perfis no
-Keycloak, PostgreSQL, empacotada em container e entregue em um cluster Kubernetes no
-GKE por pipelines de CI/CD.
+controle de estoque de peças. API REST em Kotlin/Spring Boot, autenticação por JWT de um
+emissor externo, PostgreSQL, empacotada em container e entregue em um cluster
+Kubernetes no GKE por pipelines de CI/CD.
 
 Trabalho acadêmico da **Pós-Graduação em Software Architecture — FIAP PosTech**, Grupo 89.
 
@@ -57,8 +57,7 @@ Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-
 | Componente | Tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST. Aplica as migrations do Flyway no boot |
-| **keycloak** | Keycloak 26.2.1 | Service `LoadBalancer` 8080 | Emissor dos tokens JWT, realm `Fiap` |
-| **postgres** | PostgreSQL 16-alpine | Service `ClusterIP` 5432 | Bases `oficina` e `keycloak`, com PVC de 10Gi |
+| **postgres** | PostgreSQL 16-alpine | Service `ClusterIP` 5432 | Base `oficina`, com PVC de 10Gi |
 
 Internamente a aplicação segue **Onion Architecture** — o domínio não conhece Spring,
 JPA nem HTTP:
@@ -69,9 +68,9 @@ JPA nem HTTP:
 
 | Provisionado por Terraform | Aplicado pelo pipeline |
 |---|---|
-| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployments de `app`, `keycloak` e `postgres` |
+| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployments de `app` e `postgres` |
 | Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Services, PVC de 10Gi e HPA de 1 a 3 réplicas |
-| Secret Manager com as senhas do banco e do Keycloak | ConfigMaps e Secrets do namespace |
+| Secret Manager com a senha do banco | ConfigMaps e Secrets do namespace |
 | Service account `github-actions-cd` e papéis IAM | Namespace e ordem de aplicação (`k8s/deploy.sh`) |
 
 ### Fluxo de deploy
@@ -101,7 +100,7 @@ cp .env.example .env          # ou ./create-env.sh
 **Infraestrutura em container, aplicação na IDE** *(recomendado para desenvolver)*
 
 ```bash
-docker compose up -d db keycloak
+docker compose up -d db
 ./gradlew bootRun             # Windows: gradlew.bat bootRun
 ```
 
@@ -124,13 +123,13 @@ docker compose down
 |---|---|---|
 | Aplicação (`bootRun`) | <http://localhost:8080> | — |
 | Aplicação (perfil `full`) | <http://localhost:8090> | — |
-| Swagger UI | `<url-da-app>/swagger-ui/index.html` | via Keycloak |
-| Keycloak | <http://localhost:8081> | `admin` / `admin` |
+| Swagger UI | `<url-da-app>/swagger-ui/index.html` | bearer JWT |
 | PostgreSQL | `localhost:5432` | `user` / `password` |
 
-**Usuários do realm `Fiap`:** `admin`/`admin` (ADMIN), `atendente`/`atendente`
-(ATENDENTE), `mecanico`/`mecanico` (MECANICO), `clientepadrao`/`clientepadrao` (CLIENTE).
-No Swagger, clique em **Authorize**, informe o client `oficina` e faça login.
+Os tokens vêm de um emissor externo, configurado por `AUTH_ISSUER_URI` e
+`AUTH_AUDIENCE`. A aplicação apenas valida assinaturas, buscando o JWKS em
+`${AUTH_ISSUER_URI}/.well-known/jwks.json`. No Swagger, clique em **Authorize** e
+informe o bearer obtido no emissor.
 
 **Testes**
 
@@ -160,7 +159,7 @@ gcloud container clusters get-credentials tech-challenge-staging \
   --zone us-central1-a --project SEU_PROJECT_ID
 
 kubectl create namespace tech-challenge-staging
-# crie os secrets db-credentials, keycloak-credentials e ghcr-creds
+# crie os secrets db-credentials e ghcr-creds
 
 ./k8s/deploy.sh ghcr.io/iuriian/tech-challenge@sha256:DIGEST staging tech-challenge-staging
 ```
@@ -210,7 +209,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 |---|---|
 | Backend | Kotlin 2.3 · Java 21 · Spring Boot 3.4 · Spring MVC · Spring Data JPA · Spring Security |
 | Banco | PostgreSQL 16 · Flyway (12 migrations) |
-| Autenticação | Keycloak 26.2.1 · OAuth2 / OIDC · JWT |
+| Autenticação | OAuth2 Resource Server · JWT · JWKS |
 | Documentação | SpringDoc OpenAPI 2.8.5 · Swagger UI |
 | Qualidade | JUnit 5 · Testcontainers · JaCoCo · Detekt · Spotless/ktlint |
 | Build | Gradle (Kotlin DSL) |

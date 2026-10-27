@@ -145,7 +145,7 @@ interface do Actions.
 | Setup Google Cloud | `google-github-actions/auth` com `GCP_SA_KEY` |
 | Configure kubectl | `gcloud container clusters get-credentials` + `gke-gcloud-auth-plugin` |
 | Ensure namespace | Cria `tech-challenge-staging` se não existir |
-| Create cluster secrets | Lê as senhas do **Google Secret Manager** e cria `db-credentials` e `keycloak-credentials` |
+| Create cluster secrets | Lê a senha do **Google Secret Manager** e cria `db-credentials` |
 | Create GHCR pull secret | Cria `ghcr-creds` para o cluster puxar a imagem privada |
 | Validate manifests | `kubectl apply --dry-run=server` — valida contra o cluster real, sem aplicar |
 | Deploy | `./k8s/deploy.sh <digest> staging <namespace>` |
@@ -163,18 +163,13 @@ A ordem existe por um motivo, e é o que o script encapsula:
 
 1. **Secrets** — cria os de desenvolvimento só se ainda não existirem (no pipeline já
    vieram do Secret Manager).
-2. **ConfigMaps** — `postgres-initdb` e `keycloak-realm` são gerados a partir de
-   `conf/init-db/` e `conf/realm-export.json`, os mesmos arquivos do
-   `docker-compose.yml`. Nada de realm duplicado.
+2. **ConfigMaps** — `postgres-initdb` é gerado a partir de `conf/init-db/`, os mesmos
+   arquivos do `docker-compose.yml`.
 3. **PostgreSQL** — PVC antes do Deployment, senão o pod fica `Pending`.
-4. **Service do Keycloak** e espera pelo IP externo (até 300s).
-5. **Deployment do Keycloak** com `KC_HOSTNAME` = IP público. O `issuer` do token
-   precisa ser idêntico à URL por onde o usuário autenticou — é por isso que o
-   endereço precisa ser conhecido antes.
-6. **Aplicação**, com o digest da imagem e `KEYCLOAK_URL` público, mas
-   `KEYCLOAK_JWK_SET_URI` interno (`http://keycloak:8080`), para buscar as chaves sem
-   sair do cluster.
-7. **HPA** por último — aplicado antes, o alvo não existiria.
+4. **Aplicação**, com o digest da imagem. O emissor dos tokens é externo ao cluster:
+   chega pelo `app-config` (`AUTH_ISSUER_URI`, `AUTH_AUDIENCE`), sem Service nem
+   descoberta de IP.
+5. **HPA** por último — aplicado antes, o alvo não existiria.
 
 O Deployment da aplicação usa `maxSurge: 0`: o pod antigo cai antes do novo subir.
 Num único nó `e2-medium` não há CPU para dois pods simultâneos. O custo é uma breve
@@ -226,7 +221,7 @@ Settings → Environments → **staging**
 
 | Ambiente | Como sobe | Onde | Banco |
 |---|---|---|---|
-| Local (dev) | `docker-compose up -d db keycloak` + `./gradlew bootRun` | máquina | container descartável |
+| Local (dev) | `docker-compose up -d db` + `./gradlew bootRun` | máquina | container descartável |
 | Local (stack) | `docker-compose --profile full up -d` | máquina | container + volume |
 | Local (k8s) | `./kind/deploy-local.sh` | cluster kind, **mesmos manifests do GKE** | PVC do kind |
 | Staging | push em `release/*` | GKE | PVC de 10Gi |
@@ -271,7 +266,7 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 | `ImagePullBackOff` | `ghcr-creds` com token expirado | Configurar `GHCR_PAT` e rodar o deploy de novo |
 | `O Service app nao recebeu IP externo` | Cota de LoadBalancer ou zona sem capacidade | `kubectl get svc -n <ns>` e checar cota do projeto |
 | Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no Terraform ou reduzir `requests` |
-| `issuer` inválido ao autenticar | Keycloak não recebeu IP a tempo e ficou com issuer interno | Ver o aviso no log do `deploy.sh` e refazer o deploy |
+| `401` com token válido | `AUTH_ISSUER_URI` ou `AUTH_AUDIENCE` divergentes do emissor | Conferir o `app-config` do namespace |
 | App sobe e cai em loop | Falha de migration ou de conexão com o banco | O passo Debug já imprime `logs -c app --previous` |
 
 O passo **Debug** só roda em falha e imprime pods, services, PVCs, eventos do

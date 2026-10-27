@@ -6,11 +6,9 @@ Implementação mínima para subir a aplicação **oficina-mecanica** em um clus
 
 | Arquivo | Conteúdo |
 |---|---|
-| `app/configmap.yaml` | ConfigMap `app-config` (nome do banco, realm e client do Keycloak) |
+| `app/configmap.yaml` | ConfigMap `app-config` (nome do banco, issuer e audience dos tokens) |
 | `postgres/pvc.yaml` | PersistentVolumeClaim de 10Gi do PostgreSQL |
 | `postgres/deployment.yaml` | Deployment + Service do PostgreSQL 16 |
-| `keycloak/service.yaml` | Service `LoadBalancer` do Keycloak (aplicado antes do Deployment) |
-| `keycloak/deployment.yaml` | Deployment do Keycloak 26 com import do realm `Fiap` |
 | `app/deployment.yaml` | Deployment (2 réplicas) + Service `LoadBalancer` da aplicação |
 | `deploy.sh` | Orquestra o deploy: secrets, configmaps, ordem e rollout |
 
@@ -18,22 +16,18 @@ Implementação mínima para subir a aplicação **oficina-mecanica** em um clus
 
 Para testar tudo isso localmente antes do GKE, veja [`kind/README.md`](../kind/README.md).
 
-Os ConfigMaps `postgres-initdb` e `keycloak-realm` **não** são versionados aqui: o
-`deploy.sh` os gera a partir de `conf/init-db/` e `conf/realm-export.json`, os mesmos
-arquivos usados pelo `docker-compose.yml`.
+O ConfigMap `postgres-initdb` **não** é versionado aqui: o `deploy.sh` o gera a
+partir de `conf/init-db/`, os mesmos arquivos usados pelo `docker-compose.yml`.
 
-## Como funciona a ordem do deploy
+## Autenticação
 
-O `issuer-uri` validado pelo Spring Security precisa ser idêntico à URL pela qual o
-usuário obteve o token. Por isso o script:
+O emissor dos tokens é externo ao cluster. A aplicação só valida assinaturas: lê
+`AUTH_ISSUER_URI` e `AUTH_AUDIENCE` do `app-config` e busca o JWKS em
+`${AUTH_ISSUER_URI}/.well-known/jwks.json`.
 
-1. cria o Service do Keycloak e **espera o IP externo** do LoadBalancer;
-2. aplica o Deployment do Keycloak com `KC_HOSTNAME=http://<IP>:8080`;
-3. aplica a aplicação com `KEYCLOAK_URL=http://<IP>:8080` (issuer público) e
-   `KEYCLOAK_JWK_SET_URI=http://keycloak:8080/...` (busca das chaves pela rede interna).
-
-Se o IP não for atribuído dentro de `KEYCLOAK_IP_TIMEOUT` (padrão 300s), o deploy
-continua usando o issuer interno `http://keycloak:8080` e emite um aviso.
+> O `app/configmap.yaml` versionado traz `AUTH_ISSUER_URI: ""`. Preencha com a URL
+> real antes do deploy: com a variável definida e vazia o Spring não aplica o
+> default e a aplicação não sobe.
 
 ## Pré-requisitos no GKE
 
@@ -60,12 +54,6 @@ kubectl create secret generic db-credentials -n $NS \
   --from-literal=POSTGRES_USER=user \
   --from-literal=POSTGRES_PASSWORD='SENHA_FORTE'
 
-# ATENÇÃO: o Service do Keycloak é LoadBalancer — no GKE o console de admin fica
-# acessível pela internet. Nunca deixe a senha padrão em um cluster público.
-kubectl create secret generic keycloak-credentials -n $NS \
-  --from-literal=KEYCLOAK_ADMIN_USER=admin \
-  --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE'
-
 # Secret para puxar a imagem do GHCR (repositório privado)
 kubectl create secret docker-registry ghcr-creds -n $NS \
   --docker-server=ghcr.io \
@@ -76,7 +64,7 @@ kubectl create secret docker-registry ghcr-creds -n $NS \
 ```
 
 Variáveis de ambiente aceitas pelo script: `POSTGRES_USER`, `POSTGRES_PASSWORD`,
-`KEYCLOAK_ADMIN_USER`, `KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_IP_TIMEOUT`, `ROLLOUT_TIMEOUT`.
+`ROLLOUT_TIMEOUT`.
 
 ## Deploy pelo pipeline
 
@@ -98,7 +86,6 @@ secrets do repositório. Crie em *Settings → Environments → New environment 
 | `GKE_CLUSTER` | Nome do cluster |
 | `GKE_ZONE` | Zona/região do cluster |
 | `DB_PASSWORD` | Senha do PostgreSQL |
-| `KEYCLOAK_ADMIN_PASSWORD` | Senha do admin do Keycloak |
 
 **Environment variables:**
 
@@ -135,19 +122,14 @@ tenha mudado no código. Crie um PAT clássico com escopo `read:packages` e salv
 ```bash
 NS=tech-challenge-staging
 kubectl get pods -n $NS
-kubectl get svc -n $NS                # pega o EXTERNAL-IP de app e keycloak
+kubectl get svc -n $NS                # pega o EXTERNAL-IP de app
 curl http://<APP_IP>/actuator/health  # deve retornar {"status":"UP"}
 ```
 
 Swagger UI: `http://<APP_IP>/swagger-ui/index.html`
 
-Token de teste (usuário `admin` / senha `admin` do realm importado):
-
-```bash
-curl -X POST "http://<KEYCLOAK_IP>:8080/realms/Fiap/protocol/openid-connect/token" \
-  -d "client_id=oficina" -d "username=admin" -d "password=admin" \
-  -d "grant_type=password"
-```
+O token vem do emissor externo configurado em `AUTH_ISSUER_URI`; use o botão
+**Authorize** do Swagger UI com o bearer obtido lá.
 
 ## Troubleshooting
 
@@ -155,7 +137,6 @@ curl -X POST "http://<KEYCLOAK_IP>:8080/realms/Fiap/protocol/openid-connect/toke
 kubectl describe pod -l app=app
 kubectl logs -l app=app -c wait-for-db --tail=30   # esperando o banco
 kubectl logs -l app=app -c app --tail=100          # aplicação / Flyway
-kubectl logs -l app=keycloak --tail=100
 kubectl get events --sort-by=.lastTimestamp | tail -30
 ```
 
@@ -163,14 +144,14 @@ kubectl get events --sort-by=.lastTimestamp | tail -30
 |---|---|
 | `ImagePullBackOff` | Secret `ghcr-creds` ausente ou PAT sem escopo `read:packages` |
 | App reinicia após o init container | Flyway falhou — ver logs do container `app` |
-| `401` mesmo com token válido | Issuer divergente: token emitido por URL diferente de `KEYCLOAK_URL` |
-| Keycloak em `CrashLoopBackOff` | Banco `keycloak` não criado — conferir ConfigMap `postgres-initdb` |
+| `401` mesmo com token válido | Issuer ou audience divergentes de `AUTH_ISSUER_URI` / `AUTH_AUDIENCE` |
+| App não sobe, erro de placeholder | `AUTH_ISSUER_URI` vazio no `app-config` — o JWKS fica sem host |
 | PVC `Pending` | Cluster sem StorageClass padrão ou sem quota de disco |
 
 ## Limpeza
 
 ```bash
-kubectl delete -f k8s/app/deployment.yaml -f k8s/keycloak/deployment.yaml \
-  -f k8s/keycloak/service.yaml -f k8s/postgres/deployment.yaml -f k8s/app/configmap.yaml
+kubectl delete -f k8s/app/deployment.yaml -f k8s/postgres/deployment.yaml \
+  -f k8s/app/configmap.yaml
 kubectl delete pvc postgres-data
 ```

@@ -1,7 +1,7 @@
 # Documentação — Tech-Challenge
 
-Sistema de oficina mecânica. Kotlin + Spring Boot 3.4, PostgreSQL 16, Keycloak 26,
-empacotado em container e entregue num cluster GKE.
+Sistema de oficina mecânica. Kotlin + Spring Boot 3.4, PostgreSQL 16, autenticação
+por JWT de um emissor externo, empacotado em container e entregue num cluster GKE.
 
 ## Entrega desta fase
 
@@ -34,7 +34,7 @@ empacotado em container e entregue num cluster GKE.
 
 | Onde | Conteúdo |
 |---|---|
-| [`../README.md`](../README.md) | Como rodar o projeto localmente, usuários do Keycloak, Swagger |
+| [`../README.md`](../README.md) | Como rodar o projeto localmente, autenticação, Swagger |
 | [`../k8s/README.md`](../k8s/README.md) | Manifests do Kubernetes e a ordem de aplicação |
 | [`../kind/README.md`](../kind/README.md) | Cluster local com kind, usando os mesmos manifests do GKE |
 | [`../terraform/README.md`](../terraform/README.md) | Provisionamento do cluster GKE e dos secrets |
