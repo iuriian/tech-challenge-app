@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.infrastructure.config
+package br.com.fiap.oficina.api.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -39,7 +39,8 @@ class SecurityConfig {
     }
 
     @Bean
-    fun keycloakJwtAuthenticationConverter(): JwtAuthenticationConverter = JwtAuthenticationConverter().apply {
-        setJwtGrantedAuthoritiesConverter(KeycloakJwtRoleConverter())
-    }
+    fun keycloakJwtAuthenticationConverter(): JwtAuthenticationConverter =
+        JwtAuthenticationConverter().apply {
+            setJwtGrantedAuthoritiesConverter(KeycloakJwtRoleConverter())
+        }
 }
