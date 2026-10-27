@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.infrastructure.config
+package br.com.fiap.oficina.api.config
 
 import org.apache.catalina.Context
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer
