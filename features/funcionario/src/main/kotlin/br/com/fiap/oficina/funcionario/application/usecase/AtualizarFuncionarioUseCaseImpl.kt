@@ -16,10 +16,7 @@ internal class AtualizarFuncionarioUseCaseImpl(
     private val repository: FuncionarioRepository,
     private val mapper: FuncionarioMapper,
 ) : AtualizarFuncionarioUseCase {
-    override fun executar(
-        id: String,
-        request: FuncionarioRequest,
-    ): FuncionarioResponse {
+    override fun executar(id: String, request: FuncionarioRequest): FuncionarioResponse {
         require(id.isNotBlank()) { "Id é obrigatório!" }
 
         val funcionario =
@@ -40,10 +37,7 @@ internal class AtualizarFuncionarioUseCaseImpl(
         return mapper.toResponse(repository.salvar(atualizado))
     }
 
-    private fun validarCpfDisponivel(
-        cpf: CPF,
-        funcionario: Funcionario,
-    ) {
+    private fun validarCpfDisponivel(cpf: CPF, funcionario: Funcionario) {
         if (cpf == funcionario.cpf) return
 
         val cpfCadastrado = repository.buscarPorCpf(cpf)
