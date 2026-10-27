@@ -16,10 +16,6 @@ spec:
   template:
     metadata:
       annotations:
-        # Substituido pelo deploy.sh por um hash do conteudo dos secrets.
-        # Sem isto, corrigir uma senha nao chega ao pod: o template continua
-        # identico, o `kubectl apply` vira no-op, nenhum ReplicaSet novo e
-        # criado e o pod antigo segue reiniciando com o valor velho.
         checksum/secrets: "__SECRETS_HASH__"
       labels:
         app: app
@@ -29,11 +25,15 @@ spec:
       initContainers:
         - name: wait-for-db
           image: postgres:16-alpine
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: app-config, key: DB_HOST }
           command:
             - sh
             - -c
             - |
-              until pg_isready -h postgres -p 5432; do
+              until pg_isready -h "$DB_HOST" -p 5432; do
                 echo "aguardando postgres..."
                 sleep 3
               done
@@ -50,6 +50,12 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: POSTGRES_DB
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: app-config, key: DB_HOST }
+            - name: DB_SSLMODE
+              valueFrom:
+                configMapKeyRef: { name: app-config, key: DB_SSLMODE }
             - name: AUTH_ISSUER_URI
               valueFrom:
                 configMapKeyRef:
@@ -61,7 +67,7 @@ spec:
                   name: app-config
                   key: AUTH_AUDIENCE
             - name: DB_URL
-              value: "jdbc:postgresql://postgres:5432/$(POSTGRES_DB)"
+              value: "jdbc:postgresql://$(DB_HOST):5432/$(POSTGRES_DB)?sslmode=$(DB_SSLMODE)"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -72,6 +78,9 @@ spec:
                 secretKeyRef:
                   name: db-credentials
                   key: POSTGRES_PASSWORD
+            # 3 pods x 4 = 12 conexoes; com as 6 do auth, ficam 18 das ~22 da db-f1-micro
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE
+              value: "4"
           startupProbe:
             httpGet:
               path: /actuator/health/readiness
