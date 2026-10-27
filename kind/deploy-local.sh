@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Sobe a stack completa (Postgres + Keycloak + aplicacao) em um cluster kind
+# Sobe a stack completa (Postgres + aplicacao) em um cluster kind
 # local, reutilizando exatamente os mesmos manifests usados no GKE (pasta k8s/).
 #
 # Uso:
@@ -18,14 +18,13 @@ SKIP_BUILD="${SKIP_BUILD:-false}"
 ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-900s}"
 
 # Portas publicadas na maquina host. Os padroes evitam as portas usadas pelo
-# docker-compose (80, 5432, 8081, 8090) e as portas 8080/8081, comuns demais.
+# docker-compose (80, 5432, 8090) e a porta 8080, comum demais.
 # Para trocar:  APP_HOST_PORT=19000 ./kind/deploy-local.sh
 APP_HOST_PORT="${APP_HOST_PORT:-18080}"
-KEYCLOAK_HOST_PORT="${KEYCLOAK_HOST_PORT:-18081}"
 
-# No kind nao ha LoadBalancer: o Keycloak e publicado via NodePort no host, e
-# essa URL e o issuer que a aplicacao vai validar.
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:${KEYCLOAK_HOST_PORT}}"
+# O emissor dos tokens e externo ao cluster: a aplicacao so valida assinaturas,
+# buscando o JWKS nesse endereco.
+AUTH_ISSUER_URI="${AUTH_ISSUER_URI:-http://localhost:8081}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -66,13 +65,11 @@ if kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
   fi
 else
   check_port_free "$APP_HOST_PORT" "aplicacao" "APP_HOST_PORT"
-  check_port_free "$KEYCLOAK_HOST_PORT" "keycloak" "KEYCLOAK_HOST_PORT"
 
-  echo "==> Criando cluster '$CLUSTER_NAME' (app: ${APP_HOST_PORT}, keycloak: ${KEYCLOAK_HOST_PORT})"
+  echo "==> Criando cluster '$CLUSTER_NAME' (app: ${APP_HOST_PORT})"
   CLUSTER_CONFIG="$(mktemp)"
   trap 'rm -f "$CLUSTER_CONFIG"' EXIT
   sed -e "s|hostPort: 18080|hostPort: ${APP_HOST_PORT}|" \
-      -e "s|hostPort: 18081|hostPort: ${KEYCLOAK_HOST_PORT}|" \
       "$SCRIPT_DIR/kind-cluster.yaml" > "$CLUSTER_CONFIG"
   kind create cluster --config "$CLUSTER_CONFIG"
 fi
@@ -102,11 +99,6 @@ kubectl create secret generic db-credentials \
   --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create secret generic keycloak-credentials \
-  --from-literal=KEYCLOAK_ADMIN_USER="${KEYCLOAK_ADMIN_USER:-admin}" \
-  --from-literal=KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}" \
-  -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-
 # Placeholder: a imagem local nao precisa de credencial, mas o Deployment
 # referencia imagePullSecrets e o kubelet loga warning se o secret nao existir.
 kubectl create secret docker-registry ghcr-creds \
@@ -123,11 +115,8 @@ kubectl create configmap postgres-initdb \
   --from-file="$ROOT_DIR/conf/init-db/" \
   -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create configmap keycloak-realm \
-  --from-file=realm.json="$ROOT_DIR/conf/realm-export.json" \
-  -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl apply -f "$K8S_DIR/app/configmap.yaml" -n "$NAMESPACE"
+sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" "$K8S_DIR/app/configmap.yaml" \
+  | kubectl apply -n "$NAMESPACE" -f -
 
 # ---------------------------------------------------------------------------
 # 5. PostgreSQL
@@ -138,27 +127,15 @@ kubectl apply -f "$K8S_DIR/postgres/deployment.yaml" -n "$NAMESPACE"
 kubectl rollout status deployment/postgres -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
 
 # ---------------------------------------------------------------------------
-# 6. Keycloak
+# 6. Aplicacao (1 replica local, para economizar CPU/memoria da maquina)
 # ---------------------------------------------------------------------------
-echo "==> Aplicando Keycloak (issuer: $KEYCLOAK_URL)"
-echo "    O primeiro boot leva ~2 min (augmentation do Quarkus + import do realm)."
-echo "    Ate la o startupProbe registra 'connection refused' na porta 9000: e esperado."
-echo "    NAO interrompa - o Ctrl+C aqui mata o script inteiro, antes de aplicar a app."
-sed "s|__KEYCLOAK_URL__|${KEYCLOAK_URL}|g" "$K8S_DIR/keycloak/deployment.yaml" \
-  | kubectl apply -n "$NAMESPACE" -f -
-kubectl rollout status deployment/keycloak -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
-
-# ---------------------------------------------------------------------------
-# 7. Aplicacao (1 replica local, para economizar CPU/memoria da maquina)
-# ---------------------------------------------------------------------------
-echo "==> Aplicando aplicacao"
+echo "==> Aplicando aplicacao (issuer: $AUTH_ISSUER_URI)"
 sed -e "s|__IMAGE__|${IMAGE}|g" \
-    -e "s|__KEYCLOAK_URL__|${KEYCLOAK_URL}|g" \
     "$K8S_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 
 # ---------------------------------------------------------------------------
-# 8. Converte os Services para NodePort (aplicado DEPOIS dos manifests, que
+# 7. Converte os Services para NodePort (aplicado DEPOIS dos manifests, que
 #    declaram LoadBalancer para o GKE)
 # ---------------------------------------------------------------------------
 kubectl apply -f "$SCRIPT_DIR/nodeport-services.yaml" -n "$NAMESPACE"
@@ -173,7 +150,7 @@ fi
 kubectl rollout status deployment/app -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
 
 # ---------------------------------------------------------------------------
-# 10. metrics-server + HPA
+# 8. metrics-server + HPA
 #
 # Diferente do GKE, o kind NAO traz metrics-server. Sem ele o HPA fica preso em
 # <unknown> indefinidamente, mesmo com tudo o mais correto. O --kubelet-insecure-tls
@@ -205,12 +182,7 @@ cat <<RESUMO
  App       : http://localhost:${APP_HOST_PORT}
  Health    : http://localhost:${APP_HOST_PORT}/actuator/health  -> $HEALTH
  Swagger   : http://localhost:${APP_HOST_PORT}/swagger-ui/index.html
- Keycloak  : ${KEYCLOAK_URL}  (admin / admin)
-
- Token de teste:
-   curl -X POST "${KEYCLOAK_URL}/realms/Fiap/protocol/openid-connect/token" \\
-     -d "client_id=oficina" -d "username=admin" -d "password=admin" \\
-     -d "grant_type=password"
+ Issuer    : ${AUTH_ISSUER_URI}
 
  Destruir: ./kind/down.sh
 ==========================================
