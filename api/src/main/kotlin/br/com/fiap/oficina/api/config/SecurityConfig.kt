@@ -16,35 +16,33 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableMethodSecurity
 class SecurityConfig {
     @Bean
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
-        http
-            .csrf { it.disable() }
-            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .authorizeHttpRequests {
-                it
-                    .requestMatchers("/actuator/health/**", "/actuator/info")
-                    .permitAll()
-                    .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/v2/funcionarios/**")
-                    .hasAnyRole("ATENDENTE", "MECANICO", "ADMIN")
-                    .requestMatchers("/api/v2/funcionarios/**")
-                    .hasRole("ATENDENTE")
-                    .anyRequest()
-                    .authenticated()
-            }.oauth2ResourceServer { rs ->
-                rs.jwt { it.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
-            }.build()
+    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
+        .csrf { it.disable() }
+        .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+        .authorizeHttpRequests {
+            it
+                .requestMatchers("/actuator/health/**", "/actuator/info")
+                .permitAll()
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                .permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v2/funcionarios/**")
+                .hasAnyRole("ATENDENTE", "MECANICO", "ADMIN")
+                .requestMatchers("/api/v2/funcionarios/**")
+                .hasRole("ATENDENTE")
+                .anyRequest()
+                .authenticated()
+        }.oauth2ResourceServer { rs ->
+            rs.jwt { it.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
+        }.build()
 
     @Bean
-    fun jwtAuthenticationConverter(): JwtAuthenticationConverter =
-        JwtAuthenticationConverter().apply {
-            setJwtGrantedAuthoritiesConverter(
-                JwtGrantedAuthoritiesConverter().apply {
-                    setAuthoritiesClaimName("roles")
-                    setAuthorityPrefix("ROLE_")
-                },
-            )
-            setPrincipalClaimName("sub")
-        }
+    fun jwtAuthenticationConverter(): JwtAuthenticationConverter = JwtAuthenticationConverter().apply {
+        setJwtGrantedAuthoritiesConverter(
+            JwtGrantedAuthoritiesConverter().apply {
+                setAuthoritiesClaimName("roles")
+                setAuthorityPrefix("ROLE_")
+            },
+        )
+        setPrincipalClaimName("sub")
+    }
 }
