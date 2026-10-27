@@ -5,6 +5,7 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
 import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.ConflictException
 import org.springframework.stereotype.Service
 
 @Service
@@ -16,7 +17,7 @@ internal class CriarFuncionarioUseCaseImpl(
         val funcionario = mapper.toDomain(request)
 
         if (repository.buscarPorCpf(funcionario.cpf) != null) {
-            throw BusinessRuleException("Funcionário já cadastrado")
+            throw ConflictException("Funcionário já cadastrado")
         }
 
         return mapper.toResponse(repository.salvar(funcionario))
