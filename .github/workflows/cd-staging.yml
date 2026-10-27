@@ -161,6 +161,7 @@ jobs:
       url: ${{ steps.expose.outputs.url }}
     env:
       KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE || 'tech-challenge-staging' }}
+      DB_USER: ${{ vars.DB_USER || 'oficina_app' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -200,6 +201,20 @@ jobs:
       - name: Install gke-gcloud-auth-plugin
         run: gcloud components install gke-gcloud-auth-plugin
 
+      - name: Resolve Cloud SQL
+        id: db
+        run: |
+          set -euo pipefail
+          INSTANCE="${{ secrets.GKE_CLUSTER }}-pg"
+          read -r POLICY DB_HOST < <(gcloud sql instances describe "$INSTANCE" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --format="value(settings.activationPolicy,ipAddresses[0].ipAddress)")
+          if [ "$POLICY" != "ALWAYS" ]; then
+            echo "::error::Cloud SQL desligado. Ligue pelo repo database: Actions > Cloud SQL - Liga/Desliga"
+            exit 1
+          fi
+          echo "host=$DB_HOST" >> "$GITHUB_OUTPUT"
+
       - name: Configure kubectl
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} \
@@ -229,7 +244,7 @@ jobs:
           fi
 
           kubectl create secret generic db-credentials \
-            --from-literal=POSTGRES_USER=user \
+            --from-literal=POSTGRES_USER="${{ env.DB_USER }}" \
             --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD" \
             -n ${{ env.KUBE_NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -252,14 +267,14 @@ jobs:
         run: |
           kubectl apply --dry-run=server \
             -f k8s/app/configmap.yaml \
-            -f k8s/postgres/pvc.yaml \
-            -f k8s/postgres/deployment.yaml \
             -f k8s/app/hpa.yaml \
             -n ${{ env.KUBE_NAMESPACE }}
 
       - name: Deploy to Kubernetes
         env:
           AUTH_ISSUER_URI: ${{ vars.AUTH_ISSUER_URI }}
+          DB_HOST: ${{ steps.db.outputs.host }}
+          DB_SSLMODE: require
         run: |
           if [ -z "$AUTH_ISSUER_URI" ]; then
             echo "::error::Variable AUTH_ISSUER_URI ausente no Environment 'staging' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
@@ -329,10 +344,6 @@ jobs:
           echo ""
           echo "=================== SERVICES ==================="
           kubectl get svc -n $NS || true
-
-          echo ""
-          echo "=================== PVC ==================="
-          kubectl get pvc -n $NS || true
 
           echo ""
           echo "=================== EVENTOS DO POD APP ==================="
