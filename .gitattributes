@@ -1,4 +1,17 @@
-/gradlew text eol=lf
-*.sh text eol=lf
+# Todo arquivo de texto e versionado com LF, independente do sistema de quem
+# faz o commit. O CI roda em Linux: CRLF commitado quebra o spotlessCheck e
+# ja causou falha nas probes do Kubernetes.
+* text=auto eol=lf
+
+# Scripts do Windows precisam de CRLF para rodar no cmd.
 *.bat text eol=crlf
-*.jar binary
+*.cmd text eol=crlf
+
+# Binarios: nunca converter.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
