@@ -100,8 +100,8 @@ jobs:
             DB_URL=jdbc:postgresql://smoke-db:5432/oficina
             DB_USERNAME=user
             DB_PASSWORD=password
-            KEYCLOAK_URL=http://keycloak.invalid:8080
-            KEYCLOAK_REALM=Fiap
+#            KEYCLOAK_URL=http://keycloak.invalid:8080
+#            KEYCLOAK_REALM=Fiap
 
   promote:
     name: Promover tags estaveis
@@ -219,23 +219,23 @@ jobs:
           DB_PASSWORD=$(gcloud secrets versions access latest \
             --secret="${{ secrets.GKE_CLUSTER }}-db-password" \
             --project="${{ secrets.GCP_PROJECT_ID }}")
-          KC_PASSWORD=$(gcloud secrets versions access latest \
-            --secret="${{ secrets.GKE_CLUSTER }}-keycloak-admin-password" \
-            --project="${{ secrets.GCP_PROJECT_ID }}")
+#          KC_PASSWORD=$(gcloud secrets versions access latest \
+#            --secret="${{ secrets.GKE_CLUSTER }}-keycloak-admin-password" \
+#            --project="${{ secrets.GCP_PROJECT_ID }}")
 
           # Valores lidos em runtime nao sao mascarados automaticamente pelo
           # GitHub; sem isto, um comando verboso poderia imprimi-los no log.
           echo "::add-mask::$DB_PASSWORD"
-          echo "::add-mask::$KC_PASSWORD"
+#          echo "::add-mask::$KC_PASSWORD"
 
           if [ -z "$DB_PASSWORD" ]; then
             echo "::error::Secret Manager devolveu senha vazia para ${{ secrets.GKE_CLUSTER }}-db-password"
             exit 1
           fi
-          if [ -z "$KC_PASSWORD" ]; then
-            echo "::error::Secret Manager devolveu senha vazia para ${{ secrets.GKE_CLUSTER }}-keycloak-admin-password"
-            exit 1
-          fi
+#          if [ -z "$KC_PASSWORD" ]; then
+#            echo "::error::Secret Manager devolveu senha vazia para ${{ secrets.GKE_CLUSTER }}-keycloak-admin-password"
+#            exit 1
+#          fi
 
           kubectl create secret generic db-credentials \
             --from-literal=POSTGRES_USER=user \
@@ -243,13 +243,13 @@ jobs:
             -n ${{ env.KUBE_NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
-          kubectl create secret generic keycloak-credentials \
-            --from-literal=KEYCLOAK_ADMIN_USER=admin \
-            --from-literal=KEYCLOAK_ADMIN_PASSWORD="$KC_PASSWORD" \
-            -n ${{ env.KUBE_NAMESPACE }} \
-            --dry-run=client -o yaml | kubectl apply -f -
+#          kubectl create secret generic keycloak-credentials \
+#            --from-literal=KEYCLOAK_ADMIN_USER=admin \
+#            --from-literal=KEYCLOAK_ADMIN_PASSWORD="$KC_PASSWORD" \
+#            -n ${{ env.KUBE_NAMESPACE }} \
+#            --dry-run=client -o yaml | kubectl apply -f -
 
-          echo "✅ Secrets db-credentials e keycloak-credentials aplicados"
+          echo "✅ Secrets db-credentials aplicado"
 
       - name: Create GHCR pull secret
         run: |
@@ -297,7 +297,7 @@ jobs:
             exit 1
           fi
 
-          KC_IP=$(kubectl get svc keycloak -n $NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+#          KC_IP=$(kubectl get svc keycloak -n $NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
 
           echo "🔍 Testando http://${APP_IP}/actuator/health"
           for i in $(seq 1 30); do
@@ -312,7 +312,6 @@ jobs:
                 echo "|---|---|"
                 echo "| Aplicacao | http://${APP_IP} |"
                 echo "| Swagger UI | http://${APP_IP}/swagger-ui/index.html |"
-                echo "| Keycloak | http://${KC_IP}:8080 |"
                 echo "| Namespace | \`${NS}\` |"
                 echo "| Imagem | \`${{ needs.build.outputs.image }}\` |"
               } >> "$GITHUB_STEP_SUMMARY"
