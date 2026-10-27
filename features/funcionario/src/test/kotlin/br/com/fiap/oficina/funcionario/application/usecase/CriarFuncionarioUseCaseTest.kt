@@ -5,7 +5,7 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
-import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.ConflictException
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
 import io.mockk.every
 import io.mockk.mockk
@@ -72,7 +72,7 @@ class CriarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorCpf(funcionario.cpf) } returns funcionarioDe(request)
 
         val exception =
-            assertFailsWith<BusinessRuleException> {
+            assertFailsWith<ConflictException> {
                 useCase.executar(request)
             }
 
@@ -98,7 +98,7 @@ class CriarFuncionarioUseCaseTest {
         every { mapperMock.toDomain(request) } returns funcionario
         every { repositoryMock.buscarPorCpf(CPF(CPF_VALIDO)) } returns funcionario
 
-        assertFailsWith<BusinessRuleException> {
+        assertFailsWith<ConflictException> {
             useCase.executar(request)
         }
 
