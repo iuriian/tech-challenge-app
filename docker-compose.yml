@@ -17,34 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.2.1
-    container_name: oficina-keycloak
-    command: start-dev --import-realm
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HOSTNAME: ${KEYCLOAK_URL:-http://localhost:8081}
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_RELATIVE_PATH: /
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER:-user}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./conf/realm-export.json:/opt/keycloak/data/import/realm.json:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
-
   app:
     profiles: ["full"]
     build:
