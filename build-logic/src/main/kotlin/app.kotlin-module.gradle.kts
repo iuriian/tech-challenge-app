@@ -1,4 +1,5 @@
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
+import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
@@ -14,6 +15,12 @@ java {
 }
 
 repositories { mavenCentral() }
+
+// O BOM do Spring Boot gerencia uma versao propria do Kotlin (1.9.25 no Boot 3.4).
+// Sem este override ela rebaixa o kotlin-stdlib tambem nas configuracoes internas do
+// KGP, e o compilador 2.x quebra com NoSuchMethodError. O plugin do Boot faz isso
+// sozinho, mas ele nao e aplicado nos modulos de biblioteca.
+extra["kotlin.version"] = getKotlinPluginVersion()
 
 extensions.configure<DependencyManagementExtension> {
     imports {
