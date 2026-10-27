@@ -22,34 +22,23 @@ internal class GlobalExceptionHandler {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @ExceptionHandler(EntityNotFoundException::class)
-    fun naoEncontrado(
-        ex: EntityNotFoundException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.message, request)
+    fun naoEncontrado(ex: EntityNotFoundException, request: HttpServletRequest) =
+        erro(HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.message, request)
 
     @ExceptionHandler(NoResourceFoundException::class)
-    fun rotaInexistente(
-        ex: NoResourceFoundException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.NOT_FOUND, "Rota não encontrada", "Nenhum recurso em ${request.requestURI}", request)
+    fun rotaInexistente(request: HttpServletRequest) =
+        erro(HttpStatus.NOT_FOUND, "Rota não encontrada", "Nenhum recurso em ${request.requestURI}", request)
 
     @ExceptionHandler(ConflictException::class)
-    fun conflito(
-        ex: ConflictException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.CONFLICT, "Conflito com o estado atual do recurso", ex.message, request)
+    fun conflito(ex: ConflictException, request: HttpServletRequest) =
+        erro(HttpStatus.CONFLICT, "Conflito com o estado atual do recurso", ex.message, request)
 
     @ExceptionHandler(BusinessRuleException::class)
-    fun regraDeNegocio(
-        ex: BusinessRuleException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada", ex.message, request)
+    fun regraDeNegocio(ex: BusinessRuleException, request: HttpServletRequest) =
+        erro(HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada", ex.message, request)
 
     @ExceptionHandler(DomainException::class)
-    fun dominio(
-        ex: DomainException,
-        request: HttpServletRequest,
-    ): ResponseEntity<ErrorResponse> {
+    fun dominio(ex: DomainException, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
         log.warn("DomainException sem handler específico: {}", ex::class.simpleName, ex)
         return erro(HttpStatus.UNPROCESSABLE_ENTITY, "Operação não permitida", ex.message, request)
     }
@@ -77,34 +66,23 @@ internal class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HandlerMethodValidationException::class)
-    fun parametroInvalido(
-        ex: HandlerMethodValidationException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.BAD_REQUEST, "Parâmetro inválido", "Parâmetros da requisição são inválidos", request)
+    fun parametroInvalido(request: HttpServletRequest) =
+        erro(HttpStatus.BAD_REQUEST, "Parâmetro inválido", "Parâmetros da requisição são inválidos", request)
 
     @ExceptionHandler(IllegalArgumentException::class)
-    fun argumentoInvalido(
-        ex: IllegalArgumentException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.BAD_REQUEST, "Dados inválidos", ex.message, request)
+    fun argumentoInvalido(ex: IllegalArgumentException, request: HttpServletRequest) =
+        erro(HttpStatus.BAD_REQUEST, "Dados inválidos", ex.message, request)
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
-    fun tipoIncompativel(
-        ex: MethodArgumentTypeMismatchException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.BAD_REQUEST, "Parâmetro inválido", "Valor inválido para '${ex.name}'", request)
+    fun tipoIncompativel(ex: MethodArgumentTypeMismatchException, request: HttpServletRequest) =
+        erro(HttpStatus.BAD_REQUEST, "Parâmetro inválido", "Valor inválido para '${ex.name}'", request)
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun corpoIlegivel(
-        ex: HttpMessageNotReadableException,
-        request: HttpServletRequest,
-    ) = erro(HttpStatus.BAD_REQUEST, "Corpo inválido", "O corpo da requisição não pôde ser lido", request)
+    fun corpoIlegivel(request: HttpServletRequest) =
+        erro(HttpStatus.BAD_REQUEST, "Corpo inválido", "O corpo da requisição não pôde ser lido", request)
 
     @ExceptionHandler(Exception::class)
-    fun naoTratado(
-        ex: Exception,
-        request: HttpServletRequest,
-    ): ResponseEntity<ErrorResponse> {
+    fun naoTratado(ex: Exception, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
         log.error("Erro não tratado em {} {}", request.method, request.requestURI, ex)
         return erro(
             HttpStatus.INTERNAL_SERVER_ERROR,
@@ -119,13 +97,12 @@ internal class GlobalExceptionHandler {
         categoria: String,
         detalhe: String?,
         request: HttpServletRequest,
-    ): ResponseEntity<ErrorResponse> =
-        ResponseEntity.status(status).body(
-            ErrorResponse(
-                status = status.value(),
-                error = categoria,
-                message = detalhe ?: categoria,
-                path = request.requestURI,
-            ),
-        )
+    ): ResponseEntity<ErrorResponse> = ResponseEntity.status(status).body(
+        ErrorResponse(
+            status = status.value(),
+            error = categoria,
+            message = detalhe ?: categoria,
+            path = request.requestURI,
+        ),
+    )
 }
