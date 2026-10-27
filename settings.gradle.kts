@@ -8,6 +8,7 @@ plugins {
 rootProject.name = "oficinamecanica"
 
 include(
+    "api",
     "shared",
     "features:funcionario",
     "features:peca",
