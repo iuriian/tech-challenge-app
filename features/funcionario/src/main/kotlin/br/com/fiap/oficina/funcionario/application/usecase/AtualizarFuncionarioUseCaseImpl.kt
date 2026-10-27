@@ -6,7 +6,6 @@ import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.domain.FuncionarioId
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
-import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import br.com.fiap.oficina.shared.domain.exception.ConflictException
 import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import br.com.fiap.oficina.shared.domain.valueobject.CPF

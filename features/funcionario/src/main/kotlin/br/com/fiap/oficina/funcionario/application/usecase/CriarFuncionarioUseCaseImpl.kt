@@ -4,7 +4,6 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
-import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
 import br.com.fiap.oficina.shared.domain.exception.ConflictException
 import org.springframework.stereotype.Service
 
