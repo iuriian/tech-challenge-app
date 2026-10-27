@@ -6,6 +6,6 @@ metadata:
     app.kubernetes.io/part-of: oficina
 data:
   POSTGRES_DB: "oficina"
-  AUTH_ISSUER_URI: ""
+  AUTH_ISSUER_URI: "__AUTH_ISSUER_URI__"
   AUTH_AUDIENCE: "oficina"
 
