@@ -6,6 +6,6 @@ metadata:
     app.kubernetes.io/part-of: oficina
 data:
   POSTGRES_DB: "oficina"
-  KEYCLOAK_DB: "keycloak"
-  KEYCLOAK_REALM: "Fiap"
-  KEYCLOAK_CLIENT_ID: "oficina"
+  AUTH_ISSUER_URI: ""
+  AUTH_AUDIENCE: "oficina"
+
