@@ -27,7 +27,7 @@ class SecurityConfig {
                     .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v2/funcionarios/**")
-                    .hasRole("FUNCIONARIO")
+                    .hasAnyRole("ATENDENTE", "MECANICO", "ADMIN")
                     .requestMatchers("/api/v2/funcionarios/**")
                     .hasRole("ATENDENTE")
                     .anyRequest()
