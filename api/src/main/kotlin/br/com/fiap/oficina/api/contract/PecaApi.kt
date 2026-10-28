@@ -1,8 +1,7 @@
-package br.com.fiap.oficina.presentation.controller
+package br.com.fiap.oficina.api.contract
 
-import br.com.fiap.oficina.application.dto.PecaRequest
-import br.com.fiap.oficina.application.dto.PecaResponse
-import br.com.fiap.oficina.application.service.PecaService
+import br.com.fiap.oficina.peca.application.dto.PecaRequest
+import br.com.fiap.oficina.peca.application.dto.PecaResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -18,29 +17,17 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
-@RestController
-@RequestMapping("/pecas")
+@RequestMapping("/api/v2/pecas")
 @Tag(name = "Peças", description = "Operações relacionadas ao gerenciamento de peças e estoque")
-class PecaController(private val pecaService: PecaService) {
+interface PecaApi {
     @PostMapping
     @RolesAllowed("ADMIN")
     @Operation(
         summary = "Criar uma nova peça",
         description = "Cadastra uma nova peça no sistema. Retorna conflito (409) se o código já existir.",
     )
-    fun criar(@Valid @RequestBody peca: PecaRequest): ResponseEntity<PecaResponse> {
-        val response = pecaService.criar(peca)
-        val location =
-            ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/codigo/{codigo}")
-                .buildAndExpand(response.codigo)
-                .toUri()
-        return ResponseEntity.created(location).body(response)
-    }
+    fun cadastrar(@Valid @RequestBody request: PecaRequest): ResponseEntity<PecaResponse>
 
     @PutMapping("/{codigo}")
     @RolesAllowed("ADMIN")
@@ -51,8 +38,38 @@ class PecaController(private val pecaService: PecaService) {
     fun atualizar(
         @Parameter(description = "Código da peça a ser atualizada", required = true, example = "PEC001")
         @PathVariable codigo: String,
-        @Valid @RequestBody peca: PecaRequest,
-    ): PecaResponse = pecaService.atualizar(codigo, peca)
+        @Valid @RequestBody request: PecaRequest,
+    ): PecaResponse
+
+    @DeleteMapping("/{codigo}")
+    @RolesAllowed("ADMIN")
+    @Operation(
+        summary = "Desativar uma peça",
+        description = "Desativa (remoção lógica) uma peça identificada pelo código",
+    )
+    fun desativarPeca(
+        @Parameter(description = "Código da peça a ser desativada", required = true, example = "PEC001")
+        @PathVariable codigo: String,
+    )
+
+    @GetMapping
+    @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
+    @Operation(
+        summary = "Listar peças",
+        description = "Lista todas as peças cadastradas no sistema",
+    )
+    fun listar(): List<PecaResponse>
+
+    @GetMapping("/codigo/{codigo}")
+    @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
+    @Operation(
+        summary = "Buscar peça por código",
+        description = "Busca uma peça pelo seu código único",
+    )
+    fun buscarPorCodigo(
+        @Parameter(description = "Código da peça", required = true, example = "PEC001")
+        @PathVariable codigo: String,
+    ): PecaResponse
 
     @PatchMapping("/{codigo}/estoque/retirar")
     @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
@@ -65,7 +82,7 @@ class PecaController(private val pecaService: PecaService) {
         @PathVariable codigo: String,
         @Parameter(description = "Quantidade a ser retirada do estoque", required = true, example = "5")
         @RequestParam qtd: Int,
-    ): PecaResponse = pecaService.retirar(codigo, qtd)
+    ): PecaResponse
 
     @PatchMapping("/{codigo}/estoque/repor")
     @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
@@ -78,7 +95,7 @@ class PecaController(private val pecaService: PecaService) {
         @PathVariable codigo: String,
         @Parameter(description = "Quantidade a ser reposta no estoque", required = true, example = "10")
         @RequestParam qtd: Int,
-    ): PecaResponse = pecaService.repor(codigo, qtd)
+    ): PecaResponse
 
     @PatchMapping("/{codigo}/reativar")
     @RolesAllowed("ADMIN")
@@ -89,48 +106,5 @@ class PecaController(private val pecaService: PecaService) {
     fun reativar(
         @Parameter(description = "Código da peça a ser reativada", required = true, example = "PEC001")
         @PathVariable codigo: String,
-    ): Boolean = pecaService.reativar(codigo)
-
-    @DeleteMapping("/{codigo}")
-    @RolesAllowed("ADMIN")
-    @Operation(
-        summary = "Desativar uma peça",
-        description = "Desativa (remoção lógica) uma peça identificada pelo código",
-    )
-    fun deletar(
-        @Parameter(description = "Código da peça a ser desativada", required = true, example = "PEC001")
-        @PathVariable codigo: String,
-    ) {
-        pecaService.deletar(codigo)
-    }
-
-    @GetMapping
-    @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
-    @Operation(
-        summary = "Listar peças",
-        description = "Lista todas as peças cadastradas no sistema",
-    )
-    fun listar(): List<PecaResponse> = pecaService.listar()
-
-    @GetMapping("/codigo/{codigo}")
-    @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
-    @Operation(
-        summary = "Buscar peça por código",
-        description = "Busca uma peça pelo seu código único",
-    )
-    fun buscarPorCodigo(
-        @Parameter(description = "Código da peça", required = true, example = "PEC001")
-        @PathVariable codigo: String,
-    ): PecaResponse = pecaService.buscarPorCodigo(codigo)
-
-    @GetMapping("/nome/{nome}")
-    @RolesAllowed("ATENDENTE", "ADMIN", "MECANICO")
-    @Operation(
-        summary = "Buscar peça por nome",
-        description = "Busca uma peça pelo seu nome",
-    )
-    fun buscarPorNome(
-        @Parameter(description = "Nome da peça", required = true, example = "Filtro de óleo")
-        @PathVariable nome: String,
-    ): PecaResponse = pecaService.buscarPorNome(nome)
+    ): PecaResponse
 }
