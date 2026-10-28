@@ -1,8 +1,7 @@
-package br.com.fiap.oficina.presentation.controller
+package br.com.fiap.oficina.api.contract
 
-import br.com.fiap.oficina.application.dto.VeiculoRequest
-import br.com.fiap.oficina.application.dto.VeiculoResponse
-import br.com.fiap.oficina.application.service.VeiculoService
+import br.com.fiap.oficina.veiculo.application.dto.VeiculoRequest
+import br.com.fiap.oficina.veiculo.application.dto.VeiculoResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -16,26 +15,14 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
-@RestController
 @RequestMapping("/veiculos")
 @Tag(name = "Veículos", description = "Operações relacionadas ao gerenciamento de veículos")
-class VeiculoController(private val veiculoService: VeiculoService) {
+interface VeiculoApi {
     @PostMapping
     @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(summary = "Criar um novo veículo", description = "Cadastra um novo veículo no sistema")
-    fun criar(@Valid @RequestBody request: VeiculoRequest): ResponseEntity<VeiculoResponse> {
-        val response = veiculoService.criar(request)
-        val location =
-            ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.id)
-                .toUri()
-        return ResponseEntity.created(location).body(response)
-    }
+    fun criar(@Valid @RequestBody request: VeiculoRequest): ResponseEntity<VeiculoResponse>
 
     @GetMapping("/{id}")
     @RolesAllowed("ATENDENTE", "ADMIN")
@@ -43,7 +30,7 @@ class VeiculoController(private val veiculoService: VeiculoService) {
     fun buscarVeiculoPorId(
         @Parameter(description = "ID do veículo", required = true)
         @PathVariable id: String,
-    ): VeiculoResponse = veiculoService.buscarPorId(id)
+    ): VeiculoResponse
 
     @GetMapping("/placa/{placa}")
     @RolesAllowed("ATENDENTE", "ADMIN")
@@ -51,20 +38,20 @@ class VeiculoController(private val veiculoService: VeiculoService) {
     fun buscarVeiculoPorPlaca(
         @Parameter(description = "Placa do veículo", required = true, example = "abc1234")
         @PathVariable placa: String,
-    ): VeiculoResponse = veiculoService.buscarPorPlaca(placa)
+    ): VeiculoResponse
 
     @GetMapping("/motorista/{motoristaId}")
     @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(summary = "Buscar veículos por motorista", description = "Busca veículos cadastrados para um cliente")
-    fun buscarVeiculosPorMotorista(
+    fun buscarVeiculosPorProprietario(
         @Parameter(description = "ID do cliente (motorista)", required = true)
-        @PathVariable motoristaId: String,
-    ): List<VeiculoResponse> = veiculoService.buscarPorMotorista(motoristaId)
+        @PathVariable proprietarioId: String,
+    ): List<VeiculoResponse>
 
     @GetMapping
     @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(summary = "Listar veículos", description = "Lista todos os veículos cadastrados no sistema")
-    fun listarTodos(): List<VeiculoResponse> = veiculoService.listarTodos()
+    fun listarTodos(): List<VeiculoResponse>
 
     @PutMapping("/{id}")
     @RolesAllowed("ATENDENTE", "ADMIN")
@@ -73,7 +60,7 @@ class VeiculoController(private val veiculoService: VeiculoService) {
         @Parameter(description = "ID do veículo a ser atualizado", required = true)
         @PathVariable id: String,
         @Valid @RequestBody request: VeiculoRequest,
-    ): VeiculoResponse = veiculoService.atualizar(id, request)
+    ): VeiculoResponse
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
@@ -81,7 +68,5 @@ class VeiculoController(private val veiculoService: VeiculoService) {
     fun remover(
         @Parameter(description = "ID do veículo a ser removido", required = true)
         @PathVariable id: String,
-    ) {
-        veiculoService.remover(id)
-    }
+    )
 }

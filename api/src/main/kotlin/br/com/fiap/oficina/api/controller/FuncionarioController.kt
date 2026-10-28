@@ -9,6 +9,7 @@ import br.com.fiap.oficina.funcionario.application.usecase.BuscarFuncionarioPorN
 import br.com.fiap.oficina.funcionario.application.usecase.CriarFuncionarioUseCase
 import br.com.fiap.oficina.funcionario.application.usecase.ListarFuncionariosUseCase
 import br.com.fiap.oficina.funcionario.application.usecase.RemoverFuncionarioUseCase
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
@@ -24,13 +25,7 @@ internal class FuncionarioController(
 ) : FuncionarioApi {
     override fun cadastrar(request: FuncionarioRequest): ResponseEntity<FuncionarioResponse> {
         val response = criarFuncionarioUseCase.executar(request)
-        val location =
-            ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/id/{id}")
-                .buildAndExpand(response.id)
-                .toUri()
-        return ResponseEntity.created(location).body(response)
+        return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
     override fun listarTodos(): List<FuncionarioResponse> = listarFuncionariosUseCase.executar()
@@ -39,8 +34,10 @@ internal class FuncionarioController(
 
     override fun buscarPorNome(nome: String): FuncionarioResponse = buscarFuncionarioPorNomeUseCase.executar(nome)
 
-    override fun alterar(id: String, request: FuncionarioRequest): FuncionarioResponse =
-        atualizarFuncionarioUseCase.executar(id, request)
+    override fun alterar(
+        id: String,
+        request: FuncionarioRequest,
+    ): FuncionarioResponse = atualizarFuncionarioUseCase.executar(id, request)
 
     override fun deletar(id: String) = removerFuncionarioUseCase.executar(id)
 }
