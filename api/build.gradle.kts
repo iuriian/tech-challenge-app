@@ -7,6 +7,29 @@ plugins {
 
 val openapiVersion = "2.8.5"
 
+// O modulo api exige cobertura acima da linha de base definida em quality.jacoco.
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.95".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.95".toBigDecimal()
+            }
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.95".toBigDecimal()
+            }
+        }
+    }
+}
+
 dependencies {
     // Shared kernel: dominio comum aos modulos de feature
     implementation(project(":shared"))
