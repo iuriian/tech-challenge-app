@@ -46,5 +46,5 @@ internal class PecaController(
         estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
 
     override fun retirarPecas(codigo: String, qtd: Int): PecaResponse =
-        estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
+        estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = -qtd))
 }
