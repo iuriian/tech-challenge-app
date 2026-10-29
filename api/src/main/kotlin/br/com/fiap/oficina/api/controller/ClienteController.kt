@@ -13,7 +13,6 @@ import br.com.fiap.oficina.cliente.application.usecase.RemoverClienteUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 internal class ClienteController(
@@ -39,10 +38,8 @@ internal class ClienteController(
     override fun buscarPorDocumento(documentoNumero: String): ClienteResponse =
         buscarClientePorDocumentoUseCase.executar(documentoNumero)
 
-    override fun alterar(
-        id: String,
-        request: ClienteRequest,
-    ): ClienteResponse = atualizarClienteUseCase.executar(id, request)
+    override fun alterar(id: String, request: ClienteRequest): ClienteResponse =
+        atualizarClienteUseCase.executar(id, request)
 
     override fun deletar(id: String) = removerClienteUseCase.executar(id)
 }

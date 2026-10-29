@@ -13,7 +13,6 @@ import br.com.fiap.oficina.veiculo.application.usecase.RemoverVeiculoUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 internal class VeiculoController(
@@ -39,10 +38,8 @@ internal class VeiculoController(
 
     override fun listarTodos(): List<VeiculoResponse> = listarVeiculosUseCase.executar()
 
-    override fun atualizar(
-        id: String,
-        request: VeiculoRequest,
-    ): VeiculoResponse = atualizarVeiculoUseCase.executar(id, request)
+    override fun atualizar(id: String, request: VeiculoRequest): VeiculoResponse =
+        atualizarVeiculoUseCase.executar(id, request)
 
     override fun remover(id: String) = removerVeiculoUseCase.executar(id)
 }

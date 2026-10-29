@@ -12,7 +12,6 @@ import br.com.fiap.oficina.funcionario.application.usecase.RemoverFuncionarioUse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 internal class FuncionarioController(
@@ -34,10 +33,8 @@ internal class FuncionarioController(
 
     override fun buscarPorNome(nome: String): FuncionarioResponse = buscarFuncionarioPorNomeUseCase.executar(nome)
 
-    override fun alterar(
-        id: String,
-        request: FuncionarioRequest,
-    ): FuncionarioResponse = atualizarFuncionarioUseCase.executar(id, request)
+    override fun alterar(id: String, request: FuncionarioRequest): FuncionarioResponse =
+        atualizarFuncionarioUseCase.executar(id, request)
 
     override fun deletar(id: String) = removerFuncionarioUseCase.executar(id)
 }
