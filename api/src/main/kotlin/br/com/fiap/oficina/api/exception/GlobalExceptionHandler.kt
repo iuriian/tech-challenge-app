@@ -50,7 +50,7 @@ internal class GlobalExceptionHandler {
     ): ResponseEntity<ValidationErrorResponse> {
         val campos =
             ex.bindingResult.allErrors.associate { erro ->
-                val campo = (erro as? FieldError)?.field ?: erro.objectName
+                val campo = if (erro is FieldError) erro.field else erro.objectName
                 campo to (erro.defaultMessage ?: "valor inválido")
             }
 
