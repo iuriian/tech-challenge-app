@@ -45,7 +45,7 @@ interface VeiculoApi {
     @Operation(summary = "Buscar veículos por motorista", description = "Busca veículos cadastrados para um cliente")
     fun buscarVeiculosPorProprietario(
         @Parameter(description = "ID do cliente (motorista)", required = true)
-        @PathVariable proprietarioId: String,
+        @PathVariable("motoristaId") proprietarioId: String,
     ): List<VeiculoResponse>
 
     @GetMapping
