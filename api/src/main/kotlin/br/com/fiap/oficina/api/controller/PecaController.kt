@@ -14,7 +14,6 @@ import br.com.fiap.oficina.peca.application.usecase.ListarPecasUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 @RestController
 internal class PecaController(
@@ -30,10 +29,8 @@ internal class PecaController(
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
-    override fun atualizar(
-        codigo: String,
-        request: PecaRequest,
-    ): PecaResponse = atualizarPecaUseCase.executar(codigo, request)
+    override fun atualizar(codigo: String, request: PecaRequest): PecaResponse =
+        atualizarPecaUseCase.executar(codigo, request)
 
     override fun desativarPeca(codigo: String) {
         atualizarStatusPecaUseCase.executar(codigo, StatusPecaRequest(ativo = false))
@@ -45,13 +42,9 @@ internal class PecaController(
 
     override fun reativar(codigo: String) = atualizarStatusPecaUseCase.executar(codigo, StatusPecaRequest(ativo = true))
 
-    override fun reporPecas(
-        codigo: String,
-        qtd: Int,
-    ): PecaResponse = estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
+    override fun reporPecas(codigo: String, qtd: Int): PecaResponse =
+        estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
 
-    override fun retirarPecas(
-        codigo: String,
-        qtd: Int,
-    ): PecaResponse = estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
+    override fun retirarPecas(codigo: String, qtd: Int): PecaResponse =
+        estoquePecasUseCase.executar(codigo, EstoquePecaRequest(quantidade = qtd))
 }
