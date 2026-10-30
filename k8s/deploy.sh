@@ -79,6 +79,19 @@ if ! kubectl get secret db-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
   exit 1
 fi
 
+# New Relic: se NEW_RELIC_LICENSE_KEY estiver no ambiente, cria/atualiza o Secret.
+# Sem a key o deploy segue; o agent na imagem sobe desabilitado.
+if [[ -n "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+  echo "==> Aplicando secret newrelic-license"
+  kubectl create secret generic newrelic-license \
+    --from-literal=NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \
+    -n "$NAMESPACE" \
+    --dry-run=client -o yaml | kubectl apply -f -
+elif ! kubectl get secret newrelic-license -n "$NAMESPACE" >/dev/null 2>&1; then
+  echo "!! NEW_RELIC_LICENSE_KEY nao definida e secret newrelic-license ausente." >&2
+  echo "!!          APM do New Relic ficara desabilitado neste deploy." >&2
+fi
+
 # ---------------------------------------------------------------------------
 # 2. Checksum dos secrets, injetado no pod template do Deployment.
 # E o que faz uma senha corrigida realmente chegar ao pod: o template muda, o
@@ -91,8 +104,13 @@ else
   HASHER=(shasum -a 256)
 fi
 
-SECRETS_HASH="$(kubectl get secret db-credentials \
-  -n "$NAMESPACE" -o jsonpath='{.metadata.name}={.data}' \
+SECRET_NAMES=(db-credentials)
+if kubectl get secret newrelic-license -n "$NAMESPACE" >/dev/null 2>&1; then
+  SECRET_NAMES+=(newrelic-license)
+fi
+
+SECRETS_HASH="$(kubectl get secret "${SECRET_NAMES[@]}" \
+  -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}={.data}{end}' \
   | "${HASHER[@]}" | cut -c1-16)"
 echo "==> Checksum dos secrets: $SECRETS_HASH"
 
