@@ -6,6 +6,8 @@ plugins {
 }
 
 val openapiVersion = "2.8.5"
+val logstashLogbackVersion = "8.1"
+val newRelicApiVersion = "9.5.0"
 
 // O modulo api exige cobertura acima da linha de base definida em quality.jacoco.
 tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
@@ -54,6 +56,10 @@ dependencies {
     // Migracoes versionadas em src/main/resources/db/migration
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
+
+    // Logs JSON estruturados (stdout) + API do agent New Relic (correlacao de traces)
+    implementation("net.logstash.logback:logstash-logback-encoder:$logstashLogbackVersion")
+    implementation("com.newrelic.agent.java:newrelic-api:$newRelicApiVersion")
 
     "developmentOnly"("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("org.postgresql:postgresql")
