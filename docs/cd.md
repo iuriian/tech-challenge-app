@@ -146,6 +146,7 @@ interface do Actions.
 | Configure kubectl | `gcloud container clusters get-credentials` + `gke-gcloud-auth-plugin` |
 | Ensure namespace | Cria `tech-challenge-staging` se não existir |
 | Create cluster secrets | Lê a senha do **Google Secret Manager** e cria `db-credentials` |
+| Create New Relic license secret | Aplica `newrelic-license` a partir de `NEW_RELIC_LICENSE_KEY` (aviso se ausente; APM fica off) |
 | Create GHCR pull secret | Cria `ghcr-creds` para o cluster puxar a imagem privada |
 | Validate manifests | `kubectl apply --dry-run=server` — valida contra o cluster real, sem aplicar |
 | Deploy | `./k8s/deploy.sh <digest> staging <namespace>` |
@@ -210,6 +211,7 @@ Settings → Environments → **staging**
 |---|---|---|---|
 | Secret | `GCP_SA_KEY` | sim | JSON da service account do CI |
 | Secret | `GHCR_PAT` | recomendado | PAT com `read:packages`. Sem ele o `GITHUB_TOKEN` é usado e **expira ao fim do job** — pods que reiniciarem depois falham com `ImagePullBackOff` |
+| Secret | `NEW_RELIC_LICENSE_KEY` | recomendado | License key (Ingest) do New Relic para APM. Sem ela o deploy sobe, mas o agent fica desabilitado |
 | Variable | `GCP_PROJECT_ID` | sim | Projeto no GCP |
 | Variable | `GKE_CLUSTER` | sim | Nome do cluster (também prefixa os secrets no Secret Manager) |
 | Variable | `GKE_ZONE` | sim | Zona do cluster |

@@ -41,6 +41,7 @@ Aqui o objeto de avaliação é *como essa aplicação chega e se mantém no ar*
 4. Automatizar a verificação (CI): formatação, análise estática, testes e cobertura mínima.
 5. Automatizar a entrega (CD): build, teste de fumaça da imagem, promoção e deploy.
 6. Manter o ambiente reproduzível localmente com os mesmos manifests do GKE.
+7. Observabilidade com **New Relic** (APM via Java Agent na imagem; ver [`docs/observabilidade.md`](docs/observabilidade.md)).
 
 Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-descrição-da-solução).
 
@@ -107,10 +108,14 @@ docker compose up -d db
 **Stack completa em containers**
 
 ```bash
-docker compose --profile full up -d
+# New Relic APM (opcional): copie .env.example → .env e preencha NEW_RELIC_LICENSE_KEY
+docker compose --profile full up -d --build
 docker compose logs -f app
 docker compose down
 ```
+
+Com a license key no `.env`, a app aparece em APM como `oficina-mecanica-local`
+(ou o valor de `NEW_RELIC_APP_NAME`). O `./gradlew bootRun` **não** carrega o agent.
 
 **Kubernetes local com kind** *(valida os mesmos manifests do GKE)*
 
