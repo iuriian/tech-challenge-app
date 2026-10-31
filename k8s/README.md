@@ -60,11 +60,25 @@ kubectl create secret docker-registry ghcr-creds -n $NS \
   --docker-username=SEU_USUARIO \
   --docker-password=SEU_PAT
 
+# New Relic APM (opcional — sem isto o agent sobe desabilitado)
+export NEW_RELIC_LICENSE_KEY='sua-license-key'
+
 ./k8s/deploy.sh ghcr.io/seu-usuario/tech-challenge:latest staging $NS
 ```
 
-Variáveis de ambiente aceitas pelo script: `POSTGRES_USER`, `POSTGRES_PASSWORD`,
-`ROLLOUT_TIMEOUT`.
+Variáveis de ambiente aceitas pelo script: `AUTH_ISSUER_URI`, `DB_HOST`, `DB_SSLMODE`,
+`NEW_RELIC_LICENSE_KEY`, `ROLLOUT_TIMEOUT`.
+
+### New Relic (APM)
+
+A imagem da app sobe com o **Java Agent**. No pod:
+
+| Env | Origem | Função |
+|---|---|---|
+| `NEW_RELIC_LICENSE_KEY` | Secret `newrelic-license` (opcional) | Autentica a ingestão |
+| `NEW_RELIC_APP_NAME` | fixo no Deployment | Nome em APM: `oficina-mecanica-staging` |
+
+Detalhes: [`docs/observabilidade.md`](../docs/observabilidade.md).
 
 ## Deploy pelo pipeline
 

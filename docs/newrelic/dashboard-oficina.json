@@ -1,0 +1,239 @@
+{
+  "name": "Oficina — Observabilidade",
+  "description": "Dashboard do Tech Challenge Fase 3 (New Relic APM). Account 8639027. Apps: oficina-mecanica-local / oficina-mecanica-staging.",
+  "permissions": "PUBLIC_READ_WRITE",
+  "pages": [
+    {
+      "name": "APM e APIs",
+      "description": "Latência, volume, erros e foco em /servicos",
+      "widgets": [
+        {
+          "title": "Visão geral",
+          "layout": { "column": 1, "row": 1, "width": 12, "height": 2 },
+          "visualization": { "id": "viz.markdown" },
+          "rawConfiguration": {
+            "text": "## Oficina mecânica — New Relic\n\nAPM: `appName LIKE 'oficina-mecanica%'`.\nNegócio: custom event `OrdemServicoEvent` (criação, avanço/status, falhas) com `etapa` Diagnostico / Execucao / Finalizacao."
+          }
+        },
+        {
+          "title": "Requisições (últimas 24h)",
+          "layout": { "column": 1, "row": 3, "width": 3, "height": 3 },
+          "visualization": { "id": "viz.billboard" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) AS 'Requests' FROM Transaction WHERE appName LIKE 'oficina-mecanica%' SINCE 24 hours ago"
+              }
+            ],
+            "platformOptions": { "ignoreTimeRange": true }
+          }
+        },
+        {
+          "title": "Latência média (s)",
+          "layout": { "column": 4, "row": 3, "width": 3, "height": 3 },
+          "visualization": { "id": "viz.billboard" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT average(duration) AS 'Avg duration (s)' FROM Transaction WHERE appName LIKE 'oficina-mecanica%' SINCE 24 hours ago"
+              }
+            ],
+            "platformOptions": { "ignoreTimeRange": true }
+          }
+        },
+        {
+          "title": "Erros (últimas 24h)",
+          "layout": { "column": 7, "row": 3, "width": 3, "height": 3 },
+          "visualization": { "id": "viz.billboard" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) AS 'Errors' FROM TransactionError WHERE appName LIKE 'oficina-mecanica%' SINCE 24 hours ago"
+              }
+            ],
+            "platformOptions": { "ignoreTimeRange": true }
+          }
+        },
+        {
+          "title": "Taxa de erro (%)",
+          "layout": { "column": 10, "row": 3, "width": 3, "height": 3 },
+          "visualization": { "id": "viz.billboard" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT percentage(count(*), WHERE error IS true) AS 'Error %' FROM Transaction WHERE appName LIKE 'oficina-mecanica%' SINCE 24 hours ago"
+              }
+            ],
+            "platformOptions": { "ignoreTimeRange": true }
+          }
+        },
+        {
+          "title": "Volume de requisições (timeseries)",
+          "layout": { "column": 1, "row": 6, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.area" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM Transaction WHERE appName LIKE 'oficina-mecanica%' TIMESERIES AUTO"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Latência média e p95 (s)",
+          "layout": { "column": 7, "row": 6, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.line" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT average(duration) AS 'avg', percentile(duration, 95) AS 'p95' FROM Transaction WHERE appName LIKE 'oficina-mecanica%' TIMESERIES AUTO"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Throughput por transaction (top 10)",
+          "layout": { "column": 1, "row": 9, "width": 6, "height": 4 },
+          "visualization": { "id": "viz.bar" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM Transaction WHERE appName LIKE 'oficina-mecanica%' FACET name LIMIT 10"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Transações mais lentas (avg duration)",
+          "layout": { "column": 7, "row": 9, "width": 6, "height": 4 },
+          "visualization": { "id": "viz.bar" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT average(duration) FROM Transaction WHERE appName LIKE 'oficina-mecanica%' FACET name LIMIT 10"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Volume — APIs de ordem de serviço (/servicos)",
+          "layout": { "column": 1, "row": 13, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.area" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM Transaction WHERE appName LIKE 'oficina-mecanica%' AND (request.uri LIKE '%/servicos%' OR name LIKE '%OrdemServico%') TIMESERIES AUTO"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Latência — APIs de ordem de serviço",
+          "layout": { "column": 7, "row": 13, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.line" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT average(duration) AS 'avg', percentile(duration, 95) AS 'p95' FROM Transaction WHERE appName LIKE 'oficina-mecanica%' AND (request.uri LIKE '%/servicos%' OR name LIKE '%OrdemServico%') TIMESERIES AUTO"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Erros e falhas (TransactionError)",
+          "layout": { "column": 1, "row": 16, "width": 6, "height": 4 },
+          "visualization": { "id": "viz.table" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM TransactionError WHERE appName LIKE 'oficina-mecanica%' FACET `error.class`, `error.message`, request.uri LIMIT 20"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Erros ao longo do tempo",
+          "layout": { "column": 7, "row": 16, "width": 6, "height": 4 },
+          "visualization": { "id": "viz.line" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM TransactionError WHERE appName LIKE 'oficina-mecanica%' TIMESERIES AUTO"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Volume diário de ordens criadas",
+          "layout": { "column": 1, "row": 20, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.area" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM OrdemServicoEvent WHERE action = 'criada' AND resultado = 'sucesso' TIMESERIES 1 day"
+              }
+            ],
+            "legend": { "enabled": true }
+          }
+        },
+        {
+          "title": "Tempo médio de execução (ms) por etapa",
+          "layout": { "column": 7, "row": 20, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.bar" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT average(duracaoMs) FROM OrdemServicoEvent WHERE duracaoMs IS NOT NULL FACET etapa"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Eventos de OS por status",
+          "layout": { "column": 1, "row": 23, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.pie" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM OrdemServicoEvent WHERE resultado = 'sucesso' FACET status"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Falhas no processamento de OS",
+          "layout": { "column": 7, "row": 23, "width": 6, "height": 3 },
+          "visualization": { "id": "viz.table" },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 8639027,
+                "query": "SELECT count(*) FROM OrdemServicoEvent WHERE resultado = 'falha' FACET action, erroTipo, erroMensagem LIMIT 20"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

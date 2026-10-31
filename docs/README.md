@@ -19,6 +19,8 @@ por JWT de um emissor externo, empacotado em container e entregue num cluster GK
 | [ci.md](ci.md) | O que roda a cada Pull Request, o que reprova e como reproduzir na sua máquina |
 | [cd.md](cd.md) | Como um push em `release/*` vira aplicação no ar em staging, e como voltar atrás |
 | [escalabilidade.md](escalabilidade.md) | Como provocar o autoscaling e comprovar que o HPA criou réplicas |
+| [observabilidade.md](observabilidade.md) | New Relic APM, import do dashboard e alertas |
+| [newrelic/dashboard-oficina.json](newrelic/dashboard-oficina.json) | JSON para Import dashboard no New Relic |
 
 ## Domínio e arquitetura
 
