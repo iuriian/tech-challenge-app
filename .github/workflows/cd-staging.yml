@@ -251,6 +251,27 @@ jobs:
 
           echo "✅ Secrets db-credentials aplicado"
 
+      - name: Create New Relic license secret
+        env:
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${NEW_RELIC_LICENSE_KEY:-}" ]; then
+            echo "::warning::NEW_RELIC_LICENSE_KEY nao configurado — APM do New Relic ficara desabilitado."
+            echo "Configure em: Settings > Environments > staging (ou Secrets do repositorio)."
+            exit 0
+          fi
+
+          echo "::add-mask::$NEW_RELIC_LICENSE_KEY"
+
+          kubectl create secret generic newrelic-license \
+            --from-literal=NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "✅ Secret newrelic-license aplicado"
+
       - name: Create GHCR pull secret
         run: |
           if [ -z "${{ secrets.GHCR_PAT }}" ]; then

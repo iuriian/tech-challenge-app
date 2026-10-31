@@ -31,6 +31,9 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       AUTH_ISSUER_URI: ${AUTH_ISSUER_URI:-http://localhost:8081}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE:-oficina}
+      # New Relic APM — defina NEW_RELIC_LICENSE_KEY no .env (não versionado)
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+      NEW_RELIC_APP_NAME: ${NEW_RELIC_APP_NAME:-oficina-mecanica-local}
     depends_on:
       db:
         condition: service_healthy
