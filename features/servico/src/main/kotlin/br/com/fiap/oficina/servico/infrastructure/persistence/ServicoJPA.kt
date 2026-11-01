@@ -1,4 +1,4 @@
-package br.com.fiap.oficina.infrastructure.persistence.jpa.entity
+package br.com.fiap.oficina.servico.infrastructure.persistence
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,16 +9,13 @@ import java.util.UUID
 
 @Entity
 @Table(name = "catalogo_servicos")
-class ServicoJpaEntity(
+internal data class ServicoJPA(
     @Id
-    var id: UUID = UUID.randomUUID(),
-
+    val id: UUID,
     @Column(nullable = false, length = 100)
-    var descricao: String = "",
-
+    val descricao: String,
     @Column(nullable = false, precision = 10, scale = 2)
-    var valor: BigDecimal = BigDecimal.ZERO,
-
+    val valor: BigDecimal,
     @Column(nullable = false)
-    var ativo: Boolean = true,
+    val ativo: Boolean,
 )
