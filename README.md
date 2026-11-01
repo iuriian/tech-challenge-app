@@ -212,7 +212,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | Banco | PostgreSQL 16 · Flyway (12 migrations) |
 | Autenticação | Keycloak 26.2.1 · OAuth2 / OIDC · JWT |
 | Documentação | SpringDoc OpenAPI 2.8.5 · Swagger UI |
-| Qualidade | JUnit 5 · Testcontainers · JaCoCo · Detekt · Spotless/ktlint · SonarQube |
+| Qualidade | JUnit 5 · Testcontainers · JaCoCo · Detekt · Spotless/ktlint |
 | Build | Gradle (Kotlin DSL) |
 | Container | Docker multi-stage · Docker Compose · GHCR |
 | Orquestração | Kubernetes · GKE · kind (local) |
@@ -231,7 +231,6 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | [docs/cd.md](docs/cd.md) | Pipeline de entrega, rollback e troubleshooting |
 | [docs/adr-001.md](docs/adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway |
 | [docs/linguagem-ubiqua.md](docs/linguagem-ubiqua.md) | Glossário do domínio |
-| [docs/relatorio-vulnerabilidades.md](docs/relatorio-vulnerabilidades.md) | Vulnerabilidades das dependências |
 | [k8s/README.md](k8s/README.md) · [kind/README.md](kind/README.md) · [terraform/README.md](terraform/README.md) | Manifests, ambiente local e infraestrutura |
 
 ---
