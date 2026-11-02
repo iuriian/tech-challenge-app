@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
 import org.slf4j.MDC
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
@@ -19,14 +17,19 @@ class RequestCorrelationFilterTest {
     fun `deve gerar requestId quando o header nao vem na requisicao`() {
         val request = MockHttpServletRequest()
         val response = MockHttpServletResponse()
-        val chain = mock(FilterChain::class.java)
+        var chainCalled = false
+        val chain =
+            FilterChain { _, _ ->
+                chainCalled = true
+                assertNotNull(MDC.get(RequestCorrelationFilter.MDC_REQUEST_ID))
+            }
 
         filter.doFilter(request, response, chain)
 
         val requestId = response.getHeader(RequestCorrelationFilter.HEADER_REQUEST_ID)
         assertNotNull(requestId)
         assertTrue(requestId!!.isNotBlank())
-        verify(chain).doFilter(request, response)
+        assertTrue(chainCalled)
         assertNull(MDC.get(RequestCorrelationFilter.MDC_REQUEST_ID))
     }
 
@@ -37,7 +40,8 @@ class RequestCorrelationFilterTest {
                 addHeader(RequestCorrelationFilter.HEADER_REQUEST_ID, "req-fixo-123")
             }
         val response = MockHttpServletResponse()
-        val chain = mock(FilterChain::class.java)
+        var chainCalled = false
+        val chain = FilterChain { _, _ -> chainCalled = true }
 
         filter.doFilter(request, response, chain)
 
@@ -45,6 +49,7 @@ class RequestCorrelationFilterTest {
             "req-fixo-123",
             response.getHeader(RequestCorrelationFilter.HEADER_REQUEST_ID),
         )
-        verify(chain).doFilter(request, response)
+        assertTrue(chainCalled)
+        assertNull(MDC.get(RequestCorrelationFilter.MDC_REQUEST_ID))
     }
 }
