@@ -92,4 +92,17 @@ data class OrdemServico(
     }
 
     fun adicionarItemOrcamento(item: ItemOrcamento): OrdemServico = copy(orcamento = orcamento.adicionarItem(item))
+
+    /**
+     * Tempo decorrido entre o início da execução e a finalização.
+     *
+     * Retorna `null` enquanto a ordem de serviço não tiver percorrido as duas
+     * transições, caso em que ela não compõe a métrica de tempo médio.
+     */
+    fun tempoExecucaoEmMinutos(): Long? {
+        val inicio = dataInicioExecucao ?: return null
+        val fim = dataFinalizacao ?: return null
+
+        return Duration.between(inicio, fim).toMinutes()
+    }
 }
