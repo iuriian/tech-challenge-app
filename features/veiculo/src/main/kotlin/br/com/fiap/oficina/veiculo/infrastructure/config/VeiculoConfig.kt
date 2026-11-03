@@ -7,12 +7,15 @@ import br.com.fiap.oficina.veiculo.infrastructure.acl.ProprietarioMapper
 import br.com.fiap.oficina.veiculo.infrastructure.mapper.VeiculoJPAMapper
 import br.com.fiap.oficina.veiculo.infrastructure.persistence.VeiculoJPARepository
 import br.com.fiap.oficina.veiculo.infrastructure.persistence.VeiculoRepositoryImpl
+import br.com.fiap.oficina.veiculo.infrastructure.provider.VeiculoQueryMapper
+import br.com.fiap.oficina.veiculo.infrastructure.provider.VeiculoQueryProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
 internal class VeiculoConfig {
     // Mappers
+
     @Bean
     fun veiculoJpaMapper() = VeiculoJPAMapper()
 
@@ -20,6 +23,7 @@ internal class VeiculoConfig {
     fun proprietarioMapper() = ProprietarioMapper()
 
     // Implementations
+
     @Bean
     fun veiculoRepository(repository: VeiculoJPARepository, jpaMapper: VeiculoJPAMapper): VeiculoRepository =
         VeiculoRepositoryImpl(repository, jpaMapper)
@@ -29,4 +33,11 @@ internal class VeiculoConfig {
         queryPort: ClienteQueryPort,
         mapper: ProprietarioMapper,
     ): ConsultarProprietarioAdapter = ConsultarProprietarioAdapter(queryPort, mapper)
+
+    @Bean
+    fun veiculoQueryMapper(): VeiculoQueryMapper = VeiculoQueryMapper()
+
+    @Bean
+    fun veiculoQueryProvider(repository: VeiculoRepository, mapper: VeiculoQueryMapper): VeiculoQueryProvider =
+        VeiculoQueryProvider(repository, mapper)
 }
