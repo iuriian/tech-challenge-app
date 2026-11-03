@@ -50,6 +50,43 @@ data class OrdemServico(
             prazo = prazo,
             dataAbertura = dataAbertura,
         )
+
+        /**
+         * Status em que a ordem de serviço ainda admite alteração dos seus dados.
+         *
+         * A partir de `AGUARDANDO_APROVACAO` o orçamento é a base da aprovação do
+         * cliente, e alterá-lo invalidaria silenciosamente o valor aprovado.
+         */
+        private val STATUS_EDITAVEIS = setOf(OrdemServicoStatus.RECEBIDA, OrdemServicoStatus.EM_DIAGNOSTICO)
+    }
+
+    fun podeSerAtualizada(): Boolean = status in STATUS_EDITAVEIS
+
+    /**
+     * Devolve a ordem de serviço com os dados informados.
+     *
+     * Identidade ([id], [osNumber]), [status] e as datas permanecem inalterados:
+     * a progressão de status é responsabilidade de [avancarStatus] e [alterarStatus].
+     */
+    fun atualizar(
+        descricao: String,
+        funcionarioRef: FuncionarioRef,
+        clienteRef: ClienteRef,
+        veiculoRef: VeiculoRef,
+        orcamento: Orcamento,
+    ): OrdemServico {
+        check(podeSerAtualizada()) {
+            "Ordem de serviço no status '$status' não pode ser atualizada. " +
+                "Alterações são permitidas apenas nos status: $STATUS_EDITAVEIS"
+        }
+
+        return copy(
+            descricao = descricao,
+            funcionarioRef = funcionarioRef,
+            clienteRef = clienteRef,
+            veiculoRef = veiculoRef,
+            orcamento = orcamento,
+        )
     }
 
     fun avancarStatus(agora: Instant = Instant.now()): OrdemServico {
