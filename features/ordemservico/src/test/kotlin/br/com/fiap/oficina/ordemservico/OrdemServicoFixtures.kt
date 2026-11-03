@@ -60,8 +60,8 @@ internal object OrdemServicoFixtures {
 
     val PECA_PRECO: BigDecimal = BigDecimal("89.90")
     val SERVICO_VALOR: BigDecimal = BigDecimal("150.00")
-    val QUANTIDADE_PECA: BigDecimal = BigDecimal("2")
-    val QUANTIDADE_SERVICO: BigDecimal = BigDecimal.ONE
+    val QUANTIDADE_PECA: BigDecimal = BigDecimal("2.00")
+    val QUANTIDADE_SERVICO: BigDecimal = BigDecimal("1.00")
 
     val PRAZO: Duration = Duration.ofHours(4)
     val DATA_ABERTURA: Instant = Instant.parse("2026-01-05T12:00:00Z")

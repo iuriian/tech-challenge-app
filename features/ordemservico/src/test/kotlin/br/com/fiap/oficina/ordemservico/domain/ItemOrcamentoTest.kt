@@ -33,7 +33,7 @@ class ItemOrcamentoTest {
         assertEquals(TipoItemOrcamento.SERVICO, item.tipo)
         assertEquals(OrdemServicoFixtures.SERVICO_DESCRICAO, item.descricao)
         assertEquals(OrdemServicoFixtures.SERVICO_VALOR, item.valorUnitario)
-        assertEquals(BigDecimal.ONE, item.quantidade)
+        assertEquals(OrdemServicoFixtures.QUANTIDADE_SERVICO, item.quantidade)
         assertNull(item.codigoReferencia)
         assertEquals(OrdemServicoFixtures.SERVICO_VALOR, item.subtotal)
     }
