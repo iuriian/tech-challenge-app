@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":features:cliente"))
     implementation(project(":features:veiculo"))
     implementation(project(":features:servico"))
+    implementation(project(":features:ordemservico"))
 
     // Agregador de testes
     jacocoAggregation(project(":shared"))
@@ -36,6 +37,7 @@ dependencies {
     jacocoAggregation(project(":features:cliente"))
     jacocoAggregation(project(":features:veiculo"))
     jacocoAggregation(project(":features:servico"))
+    jacocoAggregation(project(":features:ordemservico"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
