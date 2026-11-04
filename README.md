@@ -81,11 +81,14 @@ flowchart LR
     B --> C["smoke test<br/>app + PostgreSQL"]
     C --> D["promote<br/>tag no digest testado"]
     D --> E["deploy-staging<br/>k8s/deploy.sh"]
-    E --> F(["URL publicada"])
+    E --> F(["Staging no ar"])
+    F -->|"merge em main + tag vX.Y.Z"| G["CD - Production<br/>promove o digest validado"]
+    G --> H(["Produção no ar"])
 ```
 
 A imagem é referenciada por **digest** desde o primeiro passo e a tag legível só é
 aplicada depois do smoke test: o que foi testado é exatamente o que sobe no cluster.
+Produção não rebuilda — promove o mesmo digest que passou por homologação.
 
 ---
 
@@ -145,11 +148,20 @@ Passo a passo completo, incluindo o Nginx e o arquivo `hosts`:
 
 ## Deploy em Kubernetes
 
-**Pelo pipeline** — um push em `release/*` dispara build, smoke test, promoção e deploy:
+**Para staging** — um push em `release/*` dispara build, smoke test, promoção e deploy:
 
 ```bash
 git checkout -b release/1.1.0
 git push -u origin release/1.1.0
+```
+
+**Para produção** — validado o staging, o merge em `main` e a tag disparam a
+promoção do digest já testado:
+
+```bash
+git checkout main && git pull
+git tag -a v1.1.0 -m "Release 1.1.0"
+git push origin v1.1.0
 ```
 
 **Manualmente**, com `kubectl` autenticado no cluster:
@@ -192,8 +204,11 @@ eval "$(terraform output -raw get_credentials_command)"
 kubectl get nodes
 ```
 
-Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY` e
-`GHCR_PAT`, e as variables `GCP_PROJECT_ID`, `GKE_CLUSTER` e `GKE_ZONE`.
+Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY`,
+`GHCR_PAT`, `GCP_PROJECT_ID`, `GKE_CLUSTER` e `GKE_ZONE`, e a variable
+`AUTH_ISSUER_URI`. O environment `production` pede os mesmos, apontando para o
+ambiente de produção, mais os *required reviewers* que seguram o deploy para
+aprovação. Detalhes em [docs/cd.md](docs/cd.md#8-configuração-necessária-no-github).
 
 Para destruir o ambiente: `terraform destroy`. **Nunca versione o `.tfstate`** — ele
 grava valores sensíveis em texto puro.

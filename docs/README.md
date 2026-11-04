@@ -17,7 +17,7 @@ por JWT de um emissor externo, empacotado em container e entregue num cluster GK
 |---|---|
 | [versionamento.md](versionamento.md) | Como as branches se organizam (GitFlow), como nomear commits e branches, quando incrementar a versão e como a imagem é identificada |
 | [ci.md](ci.md) | O que roda a cada Pull Request, o que reprova e como reproduzir na sua máquina |
-| [cd.md](cd.md) | Como um push em `release/*` vira aplicação no ar em staging, e como voltar atrás |
+| [cd.md](cd.md) | Como um push em `release/*` vira aplicação no ar em staging, como a tag promove para produção, e como voltar atrás |
 | [escalabilidade.md](escalabilidade.md) | Como provocar o autoscaling e comprovar que o HPA criou réplicas |
 
 ## Domínio e arquitetura
@@ -50,14 +50,17 @@ flowchart TD
     CI["CI<br/>spotless · detekt · testes · cobertura 90% · build"]
     DEV["develop"]
     REL["release/1.1.0"]
-    CD["CD<br/>build · smoke test · promote · deploy"]
+    CD["CD - Staging<br/>build · smoke test · promote · deploy"]
     STG(["Staging no GKE"])
-    MAIN["main + tag v1.1.0"]
+    MAIN["main"]
 
     F --> PR --> CI
     CI -->|verde| DEV
     DEV --> REL --> CD --> STG
     STG -->|validado| MAIN
+    MAIN --> TAG["tag vX.Y.Z"]
+    TAG --> CDP["CD - Production<br/>promove o digest validado"]
+    CDP --> PRD(["Produção no GKE"])
     MAIN -.->|merge de volta| DEV
 ```
 
@@ -67,6 +70,8 @@ flowchart TD
 | Verificação | PR para `main` ou `develop` | [ci.md](ci.md) |
 | Entrega em staging | push em `release/*` | [cd.md](cd.md) |
 | Liberação | merge em `main` + tag `vX.Y.Z` | [versionamento.md](versionamento.md#5-versionamento-semântico) |
+| Entrega em produção | tag `vX.Y.Z` | [cd.md](cd.md) |
 
-Não existe pipeline de produção: `main` hoje é o registro do que foi liberado, não um
-ambiente. As lacunas conhecidas de cada etapa estão na última seção de cada documento.
+A tag `vX.Y.Z` criada no merge em `main` dispara o CD de produção, que **não rebuilda**:
+promove o digest que o staging já validou. As lacunas conhecidas de cada etapa estão
+na última seção de cada documento.

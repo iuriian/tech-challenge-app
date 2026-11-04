@@ -1,10 +1,11 @@
 # Entrega Contínua (CD)
 
-Como um commit numa branch de release vira uma aplicação no ar em staging.
+Como um commit numa branch de release vira uma aplicação no ar em staging, e como
+a tag dessa versão a promove para produção.
 
-- Workflow: [`.github/workflows/cd-staging.yml`](../.github/workflows/cd-staging.yml)
+- Workflows: [`cd-staging.yml`](../.github/workflows/cd-staging.yml) · [`cd-production.yml`](../.github/workflows/cd-production.yml)
 - Registry: GitHub Container Registry (`ghcr.io/iuriian/tech-challenge`)
-- Destino: cluster **GKE**, namespace `tech-challenge-staging`
+- Destinos: cluster **GKE**, namespaces `tech-challenge-staging` e `tech-challenge-production`
 - Infraestrutura: [`terraform/`](../terraform/) · Manifests: [`k8s/`](../k8s/)
 
 ---
@@ -15,6 +16,12 @@ Como um commit numa branch de release vira uma aplicação no ar em staging.
 on:
   push:
     branches: ["release/**"]
+  workflow_dispatch:
+
+# cd-production.yml
+on:
+  push:
+    tags: ["v*.*.*"]
   workflow_dispatch:
 
 concurrency:
@@ -217,10 +224,25 @@ Settings → Environments → **staging**
 |---|---|---|---|
 | Secret | `GCP_SA_KEY` | sim | JSON da service account do CI |
 | Secret | `GHCR_PAT` | recomendado | PAT com `read:packages`. Sem ele o `GITHUB_TOKEN` é usado e **expira ao fim do job** — pods que reiniciarem depois falham com `ImagePullBackOff` |
-| Variable | `GCP_PROJECT_ID` | sim | Projeto no GCP |
-| Variable | `GKE_CLUSTER` | sim | Nome do cluster (também prefixa os secrets no Secret Manager) |
-| Variable | `GKE_ZONE` | sim | Zona do cluster |
+| Secret | `GCP_PROJECT_ID` | sim | Projeto no GCP |
+| Secret | `GKE_CLUSTER` | sim | Nome do cluster (também prefixa os secrets no Secret Manager) |
+| Secret | `GKE_ZONE` | sim | Zona do cluster |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
+| Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens; o deploy aborta se estiver vazia |
+| Variable | `DB_USER` | não | Padrão: `oficina_app` |
+
+Settings → Environments → **production**
+
+| Tipo | Nome | Obrigatório | Descrição |
+|---|---|---|---|
+| Proteção | **Required reviewers** | recomendado | É daqui que vem a aprovação manual: o workflow não a implementa |
+| Secret | `GCP_SA_KEY` · `GCP_PROJECT_ID` · `GKE_CLUSTER` · `GKE_ZONE` | sim | Mesmo papel que em staging, apontando para o ambiente de produção |
+| Secret | `GHCR_PAT` | **sim** | Diferente de staging: aqui a falta dele é erro, não aviso |
+| Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens de produção |
+| Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-production` |
+| Variable | `CLOUDSQL_INSTANCE` | não | Padrão: `<GKE_CLUSTER>-pg` |
+| Variable | `DB_PASSWORD_SECRET` | não | Padrão: `<GKE_CLUSTER>-db-password` |
+| Variable | `DB_USER` | não | Padrão: `oficina_app` |
 
 ---
 
@@ -232,14 +254,56 @@ Settings → Environments → **staging**
 | Local (stack) | `docker-compose --profile full up -d` | máquina | container + volume |
 | Local (k8s) | `./kind/deploy-local.sh` | cluster kind, **mesmos manifests do GKE** | PVC do kind |
 | Staging | push em `release/*` | GKE | Cloud SQL externo (repo `tech-challenge-database`) |
-| Produção | — | — | **não existe ainda** |
+| Produção | tag `vX.Y.Z` em `main` | GKE | Cloud SQL externo (instância própria) |
 
 O ambiente `kind` é o ensaio: valida os manifests de `k8s/` sem gastar recurso na
 nuvem. Veja [`kind/README.md`](../kind/README.md).
 
 ---
 
-## 10. Rollback
+## 10. Pipeline de produção
+
+Produção **não builda imagem**. Ela promove para o cluster o digest exato que o CD
+de staging buildou, passou no smoke test e colocou no ar em homologação. Rebuildar a
+partir da tag geraria um digest diferente do validado, e a promessa "o que foi
+testado é o que sobe" se perderia.
+
+O elo entre o git e o registry é a versão:
+
+```
+tag git v1.1.0  →  ghcr.io/<repo>:release-1.1.0  →  digest validado
+```
+
+A tag `release-1.1.0` é a que o job `promote` aplicou sobre o digest testado quando
+houve push em `release/1.1.0`. Se ela não existir no GHCR, o job falha dizendo que
+aquela versão nunca passou por homologação — **não há caminho para produção que pule
+o staging**.
+
+| Job | O que faz |
+|---|---|
+| `resolve` | valida a versão em MAJOR.MINOR.PATCH, confere que o commit da tag está em `main` e resolve o digest |
+| `smoke-test` | reusa a mesma composite action do staging contra o digest resolvido |
+| `deploy-production` | `environment: production`, Cloud SQL, secrets, deploy, verificação e rollback |
+| `tag-released` | marca o digest com `:production` e `:vX.Y.Z` no registry |
+
+Quatro diferenças deliberadas em relação ao staging:
+
+1. **Guarda de `main`** — `git branch -r --contains` rejeita tag criada fora de `main`.
+2. **`GHCR_PAT` é obrigatório** — em staging a falta dele é aviso; aqui é erro. O
+   `GITHUB_TOKEN` expira ao fim do job e todo pod que reiniciar depois cai em
+   `ImagePullBackOff`.
+3. **Rollback automático** — a imagem corrente é gravada antes do deploy; se qualquer
+   passo falhar, o Deployment volta para ela.
+4. **Instância e secret parametrizáveis** — `vars.CLOUDSQL_INSTANCE` e
+   `vars.DB_PASSWORD_SECRET`, com fallback para `<GKE_CLUSTER>-pg` e
+   `<GKE_CLUSTER>-db-password`.
+
+A aprovação manual não está no workflow: ela vem dos *required reviewers* do
+Environment `production`, configurados em Settings > Environments.
+
+---
+
+## 11. Rollback
 
 Não há rollback automático. Se o deploy subir algo quebrado:
 
@@ -265,7 +329,7 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 
 ---
 
-## 11. Quando o deploy falha
+## 12. Quando o deploy falha
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
@@ -282,10 +346,14 @@ namespace, logs do init container `wait-for-db` e do container da aplicação
 
 ---
 
-## 12. Limitações e próximos passos
+## 13. Limitações e próximos passos
 
-- **Não existe pipeline de produção.** `main` não dispara deploy nenhum. Um
-  `cd-production.yml` acionado por tag `v*` seria o passo natural.
+- **O pipeline de produção nunca executou.** O `cd-production.yml` existe e está
+  lintado, mas autenticação no GCP, lookup do Cloud SQL e rollout só se provam na
+  primeira execução real. Dispare a primeira por `workflow_dispatch`, com uma versão
+  já validada, em vez de descobrir na primeira tag.
+- **O HPA é o mesmo nos dois ambientes.** `k8s/app/hpa.yaml` está fixo em 1 a 3
+  réplicas, dimensionamento pensado para staging.
 - **Sem aprovação manual.** O Environment `staging` não tem *required reviewers*;
   qualquer push em `release/*` sobe direto.
 - **A imagem é construída sem rodar testes.** O `Dockerfile` usa `bootJar -x test` e o

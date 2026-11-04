@@ -184,11 +184,19 @@ flowchart LR
     C --> D["promote<br/>tag release-x.y.z<br/>no digest testado"]
     D --> E["deploy-staging<br/>secrets + dry-run<br/>k8s/deploy.sh"]
     E --> F(["URL publicada<br/>no Environment staging"])
+    F -->|"merge em main<br/>tag vX.Y.Z"| G["CD - Production<br/>resolve o digest<br/>de release-x.y.z"]
+    G --> H["smoke test<br/>do digest promovido"]
+    H --> I(["Produção<br/>no Environment production"])
 ```
 
 O encadeamento é o ponto: a imagem é referenciada por **digest** desde o primeiro
 passo, e a tag legível só é aplicada depois que o smoke test passou. O que foi testado
 é exatamente o que sobe no cluster.
+
+Produção estende essa mesma garantia: ela **não builda**. A tag `v1.1.0` resolve no
+GHCR a imagem `release-1.1.0` — aquela que o staging validou — e promove o digest.
+Versão que nunca passou por homologação não tem essa tag, e o deploy falha dizendo
+isso. A aprovação manual vem dos *required reviewers* do Environment `production`.
 
 Dentro do `deploy-staging` a ordem importa. O passo 1 fica no workflow; do 2 ao 4,
 encapsulados no `k8s/deploy.sh`:
@@ -357,15 +365,17 @@ eval "$(terraform output -raw get_credentials_command)"
 kubectl get nodes
 ```
 
-**Configuração no GitHub** — Settings → Environments → `staging`:
+**Configuração no GitHub** — Settings → Environments → `staging` (o environment
+`production` pede os mesmos, apontando para o ambiente de produção, mais os
+*required reviewers*):
 
 | Tipo | Nome | Obrigatório | Descrição |
 |---|---|---|---|
 | Secret | `GCP_SA_KEY` | sim | JSON da chave da service account do CI |
 | Secret | `GHCR_PAT` | recomendado | PAT com `read:packages`. Sem ele o `GITHUB_TOKEN` expira ao fim do job e pods que reiniciarem falham com `ImagePullBackOff` |
-| Variable | `GCP_PROJECT_ID` | sim | Projeto no GCP |
-| Variable | `GKE_CLUSTER` | sim | Nome do cluster — também prefixa os secrets no Secret Manager |
-| Variable | `GKE_ZONE` | sim | Zona do cluster |
+| Secret | `GCP_PROJECT_ID` | sim | Projeto no GCP |
+| Secret | `GKE_CLUSTER` | sim | Nome do cluster — também prefixa os secrets no Secret Manager |
+| Secret | `GKE_ZONE` | sim | Zona do cluster |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
 
 A chave da service account **não** é criada pelo Terraform de propósito: o recurso

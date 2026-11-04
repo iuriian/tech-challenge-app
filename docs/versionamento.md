@@ -147,7 +147,7 @@ quebrar contrato. A primeira entrega estável é a `1.0.0`.
 | Lugar | Valor hoje | Quem atualiza |
 |---|---|---|
 | `build.gradle.kts` → `version` | `0.0.1` | manual, no início da branch `release/*` |
-| Tag git | *nenhuma tag criada* | manual, no merge em `main` |
+| Tag git | *nenhuma tag criada* | manual, no merge em `main` — **dispara o CD de produção** |
 | Tag da imagem no GHCR | `sha-<commit>` + `release-<x.y.z>` | pipeline de CD |
 
 > **Divergência a resolver.** Existe uma branch `release/1.0.0`, mas
@@ -172,7 +172,7 @@ git push -u origin release/1.1.0
 
 # 5. tag anotada no commit de merge
 git checkout main && git pull
-git tag -a v1.1.0 -m "Release 1.1.0"
+git tag -a v1.1.0 -m "Release 1.1.0"   # o push desta tag dispara o CD de producao
 git push origin v1.1.0
 
 # 6. devolve para develop
