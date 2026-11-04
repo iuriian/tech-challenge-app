@@ -89,7 +89,7 @@ spec:
                   key: NEW_RELIC_LICENSE_KEY
                   optional: true
             - name: NEW_RELIC_APP_NAME
-              value: "oficina-mecanica-staging"
+              value: "__NEW_RELIC_APP_NAME__"
           startupProbe:
             httpGet:
               path: /actuator/health/readiness

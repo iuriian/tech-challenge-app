@@ -38,6 +38,10 @@ AUTH_ISSUER_URI="${AUTH_ISSUER_URI:-}"
 DB_HOST="${DB_HOST:-}"
 DB_SSLMODE="${DB_SSLMODE:-require}"
 
+# Nome da app no New Relic, derivado do ambiente. Fixo no manifest, producao
+# reportaria sob o nome de staging e os dois ambientes se misturariam no APM.
+NEW_RELIC_APP_NAME="${NEW_RELIC_APP_NAME:-oficina-mecanica-$ENVIRONMENT}"
+
 if [[ -z "$IMAGE" ]]; then
   echo "Uso: $0 <IMAGEM> [AMBIENTE] [NAMESPACE]" >&2
   exit 1
@@ -132,6 +136,7 @@ sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" \
 echo "==> Aplicando aplicacao"
 sed -e "s|__IMAGE__|${IMAGE}|g" \
     -e "s|__SECRETS_HASH__|${SECRETS_HASH}|g" \
+    -e "s|__NEW_RELIC_APP_NAME__|${NEW_RELIC_APP_NAME}|g" \
     "$SCRIPT_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 kubectl rollout status deployment/app -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
@@ -160,5 +165,6 @@ else
 fi
 echo " Banco    : Cloud SQL $DB_HOST"
 echo " Issuer   : $AUTH_ISSUER_URI"
+echo " New Relic: $NEW_RELIC_APP_NAME"
 echo "=========================================="
 kubectl get pods,svc -n "$NAMESPACE"
