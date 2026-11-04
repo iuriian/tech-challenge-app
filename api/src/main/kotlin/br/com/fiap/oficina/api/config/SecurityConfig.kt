@@ -2,7 +2,6 @@ package br.com.fiap.oficina.api.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -13,7 +12,14 @@ import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+// jsr250Enabled e obrigatorio: sem ele o Spring ignora os @RolesAllowed dos
+// contratos e a autorizacao cai para o anyRequest().authenticated() abaixo,
+// liberando qualquer operacao para qualquer perfil autenticado.
+//
+// proxyTargetClass fica explicito porque os controllers implementam os contratos:
+// com proxy JDK o Spring MVC recusa o handler. O Boot forcaria proxy de classe pelo
+// default de spring.aop.proxy-target-class, mas a autorizacao nao deve depender disso.
+@EnableMethodSecurity(jsr250Enabled = true, proxyTargetClass = true)
 class SecurityConfig {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain = http
@@ -25,10 +31,10 @@ class SecurityConfig {
                 .permitAll()
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v2/funcionarios/**")
-                .hasAnyRole("ATENDENTE", "MECANICO", "ADMIN")
-                .requestMatchers("/api/v2/funcionarios/**")
-                .hasRole("ATENDENTE")
+                // O papel exigido por operacao fica nos @RolesAllowed dos contratos,
+                // junto da documentacao OpenAPI. Aqui so se decide o que e publico e o
+                // que exige token: regra de path e de metodo se somam, e uma regra mais
+                // restritiva aqui venceria a anotacao sem que ela fosse consultada.
                 .anyRequest()
                 .authenticated()
         }.oauth2ResourceServer { rs ->
