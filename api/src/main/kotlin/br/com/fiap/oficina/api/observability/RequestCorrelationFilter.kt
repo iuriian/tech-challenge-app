@@ -12,11 +12,17 @@ import org.springframework.web.filter.OncePerRequestFilter
 import java.util.UUID
 
 /**
+ * Folga sobre a precedência máxima: o filtro roda cedo, mas depois dos filtros de
+ * infraestrutura do Spring, para que todo log da requisição já saia correlacionado.
+ */
+private const val ORDER_OFFSET = 20
+
+/**
  * Propaga/gera [HEADER_REQUEST_ID] e preenche o MDC para logs JSON correlacionados.
  * Quando o Java Agent do New Relic está ativo, também copia trace.id / span.id do linking metadata.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 20)
+@Order(Ordered.HIGHEST_PRECEDENCE + ORDER_OFFSET)
 class RequestCorrelationFilter : OncePerRequestFilter() {
     override fun doFilterInternal(
         request: HttpServletRequest,

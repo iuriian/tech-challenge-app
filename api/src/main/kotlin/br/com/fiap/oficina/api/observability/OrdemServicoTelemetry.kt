@@ -41,7 +41,7 @@ class OrdemServicoTelemetry {
             ordemId = ordemId,
             status = status,
             erroTipo = erro.javaClass.simpleName,
-            erroMensagem = erro.message?.take(255),
+            erroMensagem = erro.message?.take(ERRO_MENSAGEM_MAX_LENGTH),
         )
     }
 
@@ -94,6 +94,9 @@ class OrdemServicoTelemetry {
     }
 
     companion object {
+        // Limite do atributo de evento no New Relic: acima disso o valor e truncado la.
+        private const val ERRO_MENSAGEM_MAX_LENGTH = 255
+
         const val EVENT_TYPE = "OrdemServicoEvent"
         const val ACTION_CRIADA = "criada"
         const val ACTION_AVANCADA = "avancada"
