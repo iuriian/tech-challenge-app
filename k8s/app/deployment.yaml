@@ -81,6 +81,15 @@ spec:
             # 3 pods x 4 = 12 conexoes; com as 6 do auth, ficam 18 das ~22 da db-f1-micro
             - name: SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE
               value: "4"
+            # New Relic APM — secret opcional: sem ele o agent sobe desabilitado.
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: newrelic-license
+                  key: NEW_RELIC_LICENSE_KEY
+                  optional: true
+            - name: NEW_RELIC_APP_NAME
+              value: "__NEW_RELIC_APP_NAME__"
           startupProbe:
             httpGet:
               path: /actuator/health/readiness

@@ -1,5 +1,6 @@
 package br.com.fiap.oficina.api.controller
 
+import br.com.fiap.oficina.api.observability.OrdemServicoTelemetry
 import br.com.fiap.oficina.api.support.ApiFixtures
 import br.com.fiap.oficina.api.support.ApiTestSupport
 import br.com.fiap.oficina.ordemservico.application.dto.AlterarStatusRequest
@@ -45,6 +46,7 @@ class OrdemServicoControllerTest {
     private val avancarStatusOrdemServicoUseCase = mockk<AvancarStatusOrdemServicoUseCase>()
     private val alterarStatusOrdemServicoUseCase = mockk<AlterarStatusOrdemServicoUseCase>()
     private val deletarOrdemServicoUseCase = mockk<DeletarOrdemServicoUseCase>(relaxUnitFun = true)
+    private val telemetry = mockk<OrdemServicoTelemetry>(relaxUnitFun = true)
 
     private val mockMvc =
         ApiTestSupport.mockMvc(
@@ -59,6 +61,7 @@ class OrdemServicoControllerTest {
                 avancarStatusOrdemServicoUseCase = avancarStatusOrdemServicoUseCase,
                 alterarStatusOrdemServicoUseCase = alterarStatusOrdemServicoUseCase,
                 deletarOrdemServicoUseCase = deletarOrdemServicoUseCase,
+                telemetry = telemetry,
             ),
         )
 

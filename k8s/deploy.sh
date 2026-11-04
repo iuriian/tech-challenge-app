@@ -38,6 +38,10 @@ AUTH_ISSUER_URI="${AUTH_ISSUER_URI:-}"
 DB_HOST="${DB_HOST:-}"
 DB_SSLMODE="${DB_SSLMODE:-require}"
 
+# Nome da app no New Relic, derivado do ambiente. Fixo no manifest, producao
+# reportaria sob o nome de staging e os dois ambientes se misturariam no APM.
+NEW_RELIC_APP_NAME="${NEW_RELIC_APP_NAME:-oficina-mecanica-$ENVIRONMENT}"
+
 if [[ -z "$IMAGE" ]]; then
   echo "Uso: $0 <IMAGEM> [AMBIENTE] [NAMESPACE]" >&2
   exit 1
@@ -79,6 +83,19 @@ if ! kubectl get secret db-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
   exit 1
 fi
 
+# New Relic: se NEW_RELIC_LICENSE_KEY estiver no ambiente, cria/atualiza o Secret.
+# Sem a key o deploy segue; o agent na imagem sobe desabilitado.
+if [[ -n "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+  echo "==> Aplicando secret newrelic-license"
+  kubectl create secret generic newrelic-license \
+    --from-literal=NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \
+    -n "$NAMESPACE" \
+    --dry-run=client -o yaml | kubectl apply -f -
+elif ! kubectl get secret newrelic-license -n "$NAMESPACE" >/dev/null 2>&1; then
+  echo "!! NEW_RELIC_LICENSE_KEY nao definida e secret newrelic-license ausente." >&2
+  echo "!!          APM do New Relic ficara desabilitado neste deploy." >&2
+fi
+
 # ---------------------------------------------------------------------------
 # 2. Checksum dos secrets, injetado no pod template do Deployment.
 # E o que faz uma senha corrigida realmente chegar ao pod: o template muda, o
@@ -91,8 +108,13 @@ else
   HASHER=(shasum -a 256)
 fi
 
-SECRETS_HASH="$(kubectl get secret db-credentials \
-  -n "$NAMESPACE" -o jsonpath='{.metadata.name}={.data}' \
+SECRET_NAMES=(db-credentials)
+if kubectl get secret newrelic-license -n "$NAMESPACE" >/dev/null 2>&1; then
+  SECRET_NAMES+=(newrelic-license)
+fi
+
+SECRETS_HASH="$(kubectl get secret "${SECRET_NAMES[@]}" \
+  -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}={.data}{end}' \
   | "${HASHER[@]}" | cut -c1-16)"
 echo "==> Checksum dos secrets: $SECRETS_HASH"
 
@@ -114,6 +136,7 @@ sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" \
 echo "==> Aplicando aplicacao"
 sed -e "s|__IMAGE__|${IMAGE}|g" \
     -e "s|__SECRETS_HASH__|${SECRETS_HASH}|g" \
+    -e "s|__NEW_RELIC_APP_NAME__|${NEW_RELIC_APP_NAME}|g" \
     "$SCRIPT_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 kubectl rollout status deployment/app -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
@@ -142,5 +165,6 @@ else
 fi
 echo " Banco    : Cloud SQL $DB_HOST"
 echo " Issuer   : $AUTH_ISSUER_URI"
+echo " New Relic: $NEW_RELIC_APP_NAME"
 echo "=========================================="
 kubectl get pods,svc -n "$NAMESPACE"
