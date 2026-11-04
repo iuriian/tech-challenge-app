@@ -1,0 +1,406 @@
+name: CD - Production
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versao ja validada em staging, sem o v (ex: 1.1.0)"
+        required: true
+        type: string
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  resolve:
+    name: Resolver a imagem validada em staging
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+      repo: ${{ steps.repo.outputs.name }}
+      version: ${{ steps.version.outputs.number }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Versao '$VERSION' nao segue MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          echo "number=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "🔖 Versao: ${VERSION}"
+
+      - name: Ensure the tag points at main
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -qE '^\s*origin/main$'; then
+            echo "::error::A tag $GITHUB_REF_NAME aponta para um commit que nao esta em main."
+            echo "Release so sai de main: faca o merge de release/* antes de criar a tag."
+            exit 1
+          fi
+          echo "✅ Commit da tag contido em main"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize image name
+        id: repo
+        run: |
+          NAME=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve the digest validated in staging
+        id: image
+        run: |
+          set -euo pipefail
+          REPO="${{ steps.repo.outputs.name }}"
+          TAG="release-${{ steps.version.outputs.number }}"
+
+          echo "🔎 Procurando ${REPO}:${TAG}"
+          if ! DIGEST=$(docker buildx imagetools inspect "${REPO}:${TAG}" \
+                          --format '{{.Manifest.Digest}}' 2>/dev/null); then
+            echo "::error::Imagem ${REPO}:${TAG} nao existe no GHCR."
+            echo "Essa tag e criada pelo CD de staging quando ha push em release/${{ steps.version.outputs.number }}."
+            echo "Producao so promove o que ja passou por homologacao - rode o staging primeiro."
+            exit 1
+          fi
+
+          if [ -z "$DIGEST" ]; then
+            echo "::error::Nao foi possivel ler o digest de ${REPO}:${TAG}"
+            exit 1
+          fi
+
+          echo "ref=${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "📦 Imagem validada: ${REPO}@${DIGEST}"
+
+  smoke-test:
+    name: Smoke test da imagem promovida
+    needs: [resolve]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image by digest
+        run: docker pull "${{ needs.resolve.outputs.image }}"
+
+      # A imagem e a mesma de staging, mas a tag release-* e movel: alguem pode
+      # te-la reapontado. O smoke test confirma que o digest que vai subir ainda
+      # serve o que precisa servir, antes de tocar no cluster de producao.
+      - name: Smoke test
+        uses: ./.github/actions/smoke-test
+        with:
+          image-tag: ${{ needs.resolve.outputs.image }}
+          port: '8080'
+          timeout: '180'
+          with-postgres: 'true'
+          env: |
+            DB_URL=jdbc:postgresql://smoke-db:5432/oficina
+            DB_USERNAME=user
+            DB_PASSWORD=password
+            AUTH_ISSUER_URI=http://auth.invalid
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [resolve, smoke-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: production
+      url: ${{ steps.expose.outputs.url }}
+    env:
+      KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE || 'tech-challenge-production' }}
+      DB_USER: ${{ vars.DB_USER || 'oficina_app' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check environment configuration
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+          GKE_ZONE: ${{ secrets.GKE_ZONE }}
+        run: |
+          MISSING=()
+          [ -n "$GCP_SA_KEY" ]     || MISSING+=("secret GCP_SA_KEY")
+          [ -n "$GCP_PROJECT_ID" ] || MISSING+=("secret GCP_PROJECT_ID")
+          [ -n "$GKE_CLUSTER" ]    || MISSING+=("secret GKE_CLUSTER")
+          [ -n "$GKE_ZONE" ]       || MISSING+=("secret GKE_ZONE")
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Configuracao ausente no Environment 'production': ${MISSING[*]}"
+            echo "Configure em: Settings > Environments > production"
+            exit 1
+          fi
+
+          echo "✅ Environment 'production' configurado"
+          echo "   Cluster:   $GKE_CLUSTER ($GKE_ZONE)"
+          echo "   Projeto:   $GCP_PROJECT_ID"
+          echo "   Namespace: ${{ env.KUBE_NAMESPACE }}"
+
+      - name: Setup Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Install gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin
+
+      - name: Resolve Cloud SQL
+        id: db
+        run: |
+          set -euo pipefail
+          INSTANCE="${{ vars.CLOUDSQL_INSTANCE || format('{0}-pg', secrets.GKE_CLUSTER) }}"
+          echo "🗄️  Instancia: $INSTANCE"
+
+          read -r POLICY DB_HOST < <(gcloud sql instances describe "$INSTANCE" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --format="value(settings.activationPolicy,ipAddresses[0].ipAddress)")
+
+          if [ "$POLICY" != "ALWAYS" ]; then
+            echo "::error::Cloud SQL '$INSTANCE' nao esta ligado (activationPolicy=$POLICY)."
+            exit 1
+          fi
+
+          if [ -z "$DB_HOST" ]; then
+            echo "::error::Cloud SQL '$INSTANCE' nao expos endereco IP"
+            exit 1
+          fi
+
+          echo "host=$DB_HOST" >> "$GITHUB_OUTPUT"
+
+      - name: Configure kubectl
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} \
+            --zone ${{ secrets.GKE_ZONE }} \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Ensure namespace
+        run: |
+          kubectl get namespace ${{ env.KUBE_NAMESPACE }} >/dev/null 2>&1 \
+            || kubectl create namespace ${{ env.KUBE_NAMESPACE }}
+
+      - name: Create cluster secrets from Secret Manager
+        run: |
+          set -euo pipefail
+          SECRET_NAME="${{ vars.DB_PASSWORD_SECRET || format('{0}-db-password', secrets.GKE_CLUSTER) }}"
+
+          DB_PASSWORD=$(gcloud secrets versions access latest \
+            --secret="$SECRET_NAME" \
+            --project="${{ secrets.GCP_PROJECT_ID }}")
+
+          # Valores lidos em runtime nao sao mascarados automaticamente pelo
+          # GitHub; sem isto, um comando verboso poderia imprimi-los no log.
+          echo "::add-mask::$DB_PASSWORD"
+
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "::error::Secret Manager devolveu senha vazia para $SECRET_NAME"
+            exit 1
+          fi
+
+          kubectl create secret generic db-credentials \
+            --from-literal=POSTGRES_USER="${{ env.DB_USER }}" \
+            --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD" \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "✅ Secret db-credentials aplicado"
+
+      - name: Create GHCR pull secret
+        run: |
+          if [ -z "${{ secrets.GHCR_PAT }}" ]; then
+            echo "::error::GHCR_PAT nao configurado. Em producao o GITHUB_TOKEN nao serve: ele expira ao fim deste job e todo pod que reiniciar depois cai em ImagePullBackOff."
+            exit 1
+          fi
+          kubectl create secret docker-registry ghcr-creds \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password='${{ secrets.GHCR_PAT }}' \
+            -n ${{ env.KUBE_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Validate manifests (server dry-run)
+        run: |
+          kubectl apply --dry-run=server \
+            -f k8s/app/configmap.yaml \
+            -f k8s/app/hpa.yaml \
+            -n ${{ env.KUBE_NAMESPACE }}
+
+      - name: Record the currently deployed image (for rollback)
+        id: previous
+        run: |
+          CURRENT=$(kubectl get deploy app -n ${{ env.KUBE_NAMESPACE }} \
+            -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
+          echo "image=${CURRENT}" >> "$GITHUB_OUTPUT"
+          if [ -n "$CURRENT" ]; then
+            echo "↩️  Imagem atual (alvo de rollback): $CURRENT"
+          else
+            echo "Primeiro deploy neste namespace - nao ha imagem anterior."
+          fi
+
+      - name: Deploy to Kubernetes
+        env:
+          AUTH_ISSUER_URI: ${{ vars.AUTH_ISSUER_URI }}
+          DB_HOST: ${{ steps.db.outputs.host }}
+          DB_SSLMODE: require
+        run: |
+          if [ -z "$AUTH_ISSUER_URI" ]; then
+            echo "::error::Variable AUTH_ISSUER_URI ausente no Environment 'production' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
+            exit 1
+          fi
+          chmod +x ./k8s/deploy.sh
+          echo "🚀 Deploying image: ${{ needs.resolve.outputs.image }}"
+          ./k8s/deploy.sh "${{ needs.resolve.outputs.image }}" production ${{ env.KUBE_NAMESPACE }}
+
+      - name: Verify deployment and expose URL
+        id: expose
+        run: |
+          NS=${{ env.KUBE_NAMESPACE }}
+
+          echo "⏳ Aguardando IP externo do Service app..."
+          for i in $(seq 1 30); do
+            APP_IP=$(kubectl get svc app -n $NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            [ -n "$APP_IP" ] && break
+            sleep 10
+          done
+
+          if [ -z "$APP_IP" ]; then
+            echo "::error::O Service app nao recebeu IP externo."
+            kubectl get svc -n $NS
+            exit 1
+          fi
+
+          echo "🔍 Testando http://${APP_IP}/actuator/health"
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 10 "http://${APP_IP}/actuator/health"; then
+              echo ""
+              echo "url=http://${APP_IP}" >> "$GITHUB_OUTPUT"
+
+              {
+                echo "## Producao no ar - v${{ needs.resolve.outputs.version }}"
+                echo ""
+                echo "| | |"
+                echo "|---|---|"
+                echo "| Aplicacao | http://${APP_IP} |"
+                echo "| Swagger UI | http://${APP_IP}/swagger-ui/index.html |"
+                echo "| Namespace | \`${NS}\` |"
+                echo "| Imagem | \`${{ needs.resolve.outputs.image }}\` |"
+                echo "| Validada em staging como | \`release-${{ needs.resolve.outputs.version }}\` |"
+              } >> "$GITHUB_STEP_SUMMARY"
+
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "❌ A aplicacao nao respondeu pelo LoadBalancer"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && steps.previous.outputs.image != ''
+        run: |
+          NS=${{ env.KUBE_NAMESPACE }}
+          echo "::warning::Deploy falhou. Revertendo para ${{ steps.previous.outputs.image }}"
+          kubectl set image deployment/app app="${{ steps.previous.outputs.image }}" -n $NS
+          kubectl rollout status deployment/app -n $NS --timeout=600s
+
+          {
+            echo "## Rollback executado"
+            echo ""
+            echo "O deploy da v${{ needs.resolve.outputs.version }} falhou e o Deployment"
+            echo "voltou para \`${{ steps.previous.outputs.image }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Debug - diagnostico completo
+        if: failure()
+        run: |
+          NS=${{ env.KUBE_NAMESPACE }}
+
+          echo "=================== IMAGEM NO DEPLOYMENT ==================="
+          kubectl get deploy app -n $NS \
+            -o jsonpath='{.spec.template.spec.containers[*].image}{"\n"}' || true
+          echo "Referencia esperada: ${{ needs.resolve.outputs.image }}"
+
+          echo ""
+          echo "=================== PODS ==================="
+          kubectl get pods -n $NS -o wide || true
+
+          echo ""
+          echo "=================== EVENTOS ==================="
+          kubectl get events -n $NS --sort-by=.lastTimestamp | tail -40 || true
+
+          echo ""
+          echo "=================== LOGS ==================="
+          kubectl logs -l app=app -n $NS --all-containers --tail=200 || true
+
+  tag-released:
+    name: Marcar o digest como production
+    needs: [resolve, deploy-production]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Deixa legivel no registry qual digest esta em producao agora, sem
+      # precisar abrir o cluster para descobrir.
+      - name: Apply the production tag to the deployed digest
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "${{ needs.resolve.outputs.repo }}:production" \
+            --tag "${{ needs.resolve.outputs.repo }}:v${{ needs.resolve.outputs.version }}" \
+            "${{ needs.resolve.outputs.image }}"
+          echo "🏷️  production e v${{ needs.resolve.outputs.version }} apontam para ${{ needs.resolve.outputs.image }}"
