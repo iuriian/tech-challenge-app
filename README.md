@@ -37,7 +37,7 @@ Aqui o objeto de avaliação é *como essa aplicação chega e se mantém no ar*
 1. Containerizar a aplicação em uma imagem enxuta e reproduzível, publicada em registry.
 2. Orquestrar em Kubernetes com probes, limites de recurso, storage persistente,
    configuração e segredos fora da imagem, e escalonamento horizontal automático.
-3. Provisionar a infraestrutura como código com Terraform.
+3. Provisionar a infraestrutura como código com Terraform, em repositório separado.
 4. Automatizar a verificação (CI): formatação, análise estática, testes e cobertura mínima.
 5. Automatizar a entrega (CD): build, teste de fumaça da imagem, promoção e deploy.
 6. Manter o ambiente reproduzível localmente com os mesmos manifests do GKE.
@@ -66,7 +66,7 @@ JPA nem HTTP:
 
 ### Infraestrutura provisionada
 
-| Provisionado por Terraform | Aplicado pelo pipeline |
+| Provisionado por Terraform (repo [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s)) | Aplicado pelo pipeline (este repo) |
 |---|---|
 | Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployment de `app` (o banco é externo) |
 | Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Service `LoadBalancer` e HPA de 1 a 3 réplicas |
@@ -189,20 +189,19 @@ Secrets, ordem de aplicação e diagnóstico de falhas:
 
 ---
 
-## Provisionamento da infraestrutura com Terraform
+## Infraestrutura
 
-```bash
-gcloud auth application-default login
+O Terraform não fica neste repositório. A VPC, o cluster GKE, os segredos do Secret
+Manager e a service account do CI são provisionados por
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+com pipeline próprio (`plan` no Pull Request, `apply` no merge para a main) e state
+remoto em bucket GCS. A instância do Cloud SQL vem de
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database).
 
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init
-terraform apply                                # 5 a 10 minutos
-
-terraform output github_environment_variables  # valores para o Environment do GitHub
-eval "$(terraform output -raw get_credentials_command)"
-kubectl get nodes
-```
+Este repositório **consome** essa infraestrutura: o `cd-staging.yml` autentica com a
+chave da service account, resolve o IP privado do Cloud SQL e lê a senha do banco no
+Secret Manager em tempo de deploy. Tudo que atravessa a fronteira entre os dois são
+três valores de identificação e uma credencial, cadastrados no Environment:
 
 Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY`,
 `GHCR_PAT`, `GCP_PROJECT_ID`, `GKE_CLUSTER` e `GKE_ZONE`, e a variable
@@ -210,11 +209,12 @@ Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY`,
 ambiente de produção, mais os *required reviewers* que seguram o deploy para
 aprovação. Detalhes em [docs/cd.md](docs/cd.md#8-configuração-necessária-no-github).
 
-Para destruir o ambiente: `terraform destroy`. **Nunca versione o `.tfstate`** — ele
-grava valores sensíveis em texto puro.
+Os três primeiros saem prontos de `terraform output github_environment_variables`,
+rodado no repositório de infra. Trocar o nome ou a zona do cluster exige atualizar os
+secrets aqui: este pipeline só conhece o cluster pelo Environment.
 
-Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provisionamento-da-infraestrutura-com-terraform)
-· [terraform/README.md](terraform/README.md).
+Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-infraestrutura-provisionada-fora-deste-repositório)
+· [README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -245,7 +245,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | [docs/cd.md](docs/cd.md) | Pipeline de entrega, rollback e troubleshooting |
 | [docs/adr-001.md](docs/adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway |
 | [docs/linguagem-ubiqua.md](docs/linguagem-ubiqua.md) | Glossário do domínio |
-| [k8s/README.md](k8s/README.md) · [kind/README.md](kind/README.md) · [terraform/README.md](terraform/README.md) | Manifests, ambiente local e infraestrutura |
+| [k8s/README.md](k8s/README.md) · [kind/README.md](kind/README.md) · [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Manifests, ambiente local e infraestrutura (repo separado) |
 
 ---
 

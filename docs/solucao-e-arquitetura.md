@@ -2,7 +2,8 @@
 
 Documento de entrega do Tech Challenge — FIAP PosTech, Software Architecture, Grupo 89.
 Cobre a descrição da solução, os objetivos da fase, o desenho da arquitetura e as
-instruções de execução local, deploy em Kubernetes e provisionamento com Terraform.
+instruções de execução local, deploy em Kubernetes e a fronteira com a infraestrutura
+provisionada por Terraform em repositório separado.
 
 | | |
 |---|---|
@@ -64,8 +65,12 @@ avaliação é **como essa aplicação chega ao ar e se mantém no ar**:
 2. **Orquestrar em Kubernetes**, com o que um ambiente real exige: probes de
    inicialização e saúde, limites de recurso, armazenamento persistente,
    configuração e segredos fora da imagem, e escalonamento horizontal automático.
-3. **Provisionar a infraestrutura como código** com Terraform, de modo que o cluster,
-   os segredos e as permissões do CI possam ser recriados do zero por um comando.
+3. **Provisionar a infraestrutura como código** com Terraform, de modo que a rede, o
+   cluster, os segredos e as permissões do CI possam ser recriados do zero por um
+   comando — entregue no repositório
+   [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+   separado por ter ciclo de vida próprio
+   (ver [4.3](#43-infraestrutura-provisionada-fora-deste-repositório)).
 4. **Automatizar a verificação (CI)**: formatação, análise estática, testes unitários
    e de integração e um piso de cobertura, executados a cada Pull Request.
 5. **Automatizar a entrega (CD)**: build da imagem, teste de fumaça da imagem antes de
@@ -145,9 +150,11 @@ Todos os recursos ficam sob o prefixo `/api/v2`.
 ### 3.3 Infraestrutura provisionada
 
 A fronteira é deliberada: **o Terraform cuida do que dura; o pipeline, do que muda a
-cada commit.**
+cada commit.** Ela separa também os repositórios: o que dura tem ciclo de vida e
+state próprios, e por isso vive fora do repositório da aplicação.
 
-**Provisionado por Terraform** (`terraform/`)
+**Provisionado por Terraform** — repositório
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s)
 
 | Recurso | Valor |
 |---|---|
@@ -156,11 +163,14 @@ cada commit.**
 | Secret Manager | `<cluster>-db-password`, com senha aleatória gerada no apply |
 | Service Account | `github-actions-cd`, com papéis de `container.developer` e acesso de leitura aos secrets |
 | APIs do GCP | container, compute, logging, monitoring, secretmanager |
+| VPC e subnet | Rede sem subnets automáticas, subnet única em `10.128.0.0/20` com Private Google Access. Compartilhada com o peering do Cloud SQL e o egress do serviço de autenticação — os outros repositórios a localizam **pelo nome**, que é o contrato entre eles |
 
-A instância do Cloud SQL **não** é provisionada por este Terraform: ela vive no
-repositório `tech-challenge-database`, que também expõe a action de liga/desliga
-usada para economizar cota em staging. O que este repositório provisiona é o
-cluster, a senha no Secret Manager e a service account do CI.
+A instância do Cloud SQL **não** é provisionada por esse Terraform: ela vive no
+repositório
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database), que
+também expõe a action de liga/desliga usada para economizar cota em staging. **Este**
+repositório não provisiona nada — apenas consome o cluster e os segredos que já
+existem.
 
 **Aplicado pelo pipeline** (`k8s/`)
 
@@ -342,28 +352,26 @@ Migrations precisam ser compatíveis com a versão anterior da aplicação.
 
 Detalhes dos manifests e da ordem de aplicação: [`k8s/README.md`](../k8s/README.md).
 
-### 4.3 Provisionamento da infraestrutura com Terraform
+### 4.3 Infraestrutura provisionada fora deste repositório
 
-**Pré-requisitos:** conta no GCP com billing ativo, `gcloud` e `terraform` instalados.
+O Terraform não está aqui. A VPC, o cluster GKE, os segredos do Secret Manager e a
+service account do CI são provisionados por
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s);
+a instância do Cloud SQL, por
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database).
 
-```bash
-gcloud auth application-default login
+A separação é de ciclo de vida, não organizacional: o cluster sobrevive a centenas de
+deploys da aplicação, e um `terraform apply` disparado pelo pipeline da aplicação
+colocaria state de infraestrutura no caminho crítico de cada release — com dois
+`apply` concorrentes assim que dois deploys coincidissem. No repositório de infra o
+provisionamento tem pipeline próprio (`terraform plan` em Pull Request, `apply` no
+merge para a main) e state remoto em bucket GCS, que ali deixa de ser recomendação:
+as senhas de staging são geradas por `random_password` e ficam gravadas no state.
 
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init
-terraform plan
-terraform apply                                # 5 a 10 minutos
-```
-
-Ao final, o `apply` entrega o que precisa ser cadastrado no GitHub:
-
-```bash
-terraform output github_environment_variables
-terraform output ci_service_account_email
-eval "$(terraform output -raw get_credentials_command)"
-kubectl get nodes
-```
+**O que atravessa a fronteira.** Três valores de identificação e uma credencial. Os
+três primeiros saem de `terraform output github_environment_variables`, rodado no
+repo de infra, e o `terraform output -raw get_credentials_command` entrega o comando
+de `get-credentials` já montado.
 
 **Configuração no GitHub** — Settings → Environments → `staging` (o environment
 `production` pede os mesmos, apontando para o ambiente de produção, mais os
@@ -380,24 +388,25 @@ kubectl get nodes
 
 A chave da service account **não** é criada pelo Terraform de propósito: o recurso
 `google_service_account_key` gravaria a chave privada no state em texto puro. Gere-a
-manualmente conforme o [`terraform/README.md`](../terraform/README.md).
+manualmente conforme o
+[README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#chave-do-gcp_sa_key).
 
-**Parâmetros ajustáveis** (`terraform/variables.tf`): `machine_type`,
-`min_node_count`, `max_node_count`, `disk_size_gb`, `use_spot_vms`, `zone`.
+**Parâmetros de capacidade** (`terraform/variables.tf`, no repo de infra):
+`machine_type`, `min_node_count`, `max_node_count`, `disk_size_gb`, `use_spot_vms`,
+`zone`. Se o HPA deixar pods em `Pending`, é `max_node_count` que precisa subir — e a
+mudança é um Pull Request lá, não aqui.
 
-**Destruindo o ambiente**
+**Apontando o `kubectl` local para o cluster**
 
 ```bash
-terraform destroy
+gcloud container clusters get-credentials <GKE_CLUSTER> \
+  --zone <GKE_ZONE> --project <GCP_PROJECT_ID>
+kubectl get nodes
 ```
 
-O cluster é criado com `deletion_protection = false` justamente para permitir isso em
-staging. Em produção, mantenha a proteção ligada.
-
-> **State remoto.** O state local funciona para uma pessoa, mas some ao trocar de
-> máquina e não suporta dois `apply` simultâneos. Para usar um bucket GCS, veja a
-> seção correspondente no [`terraform/README.md`](../terraform/README.md).
-> Nunca versione o `.tfstate` — ele grava valores sensíveis em texto puro.
+O ciclo de criar e destruir o ambiente — incluindo o `terraform destroy`, possível em
+staging porque o cluster é criado com `deletion_protection = false` — está
+documentado no [README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -423,7 +432,7 @@ dos listados no `@RolesAllowed` da operação, senão a resposta é `403`.
 
 Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 
-1. `terraform apply` e o cluster criado no console do GCP.
+1. `terraform apply` no repositório de infra e o cluster criado no console do GCP.
 2. Abertura de um Pull Request e a CI reprovando/aprovando com os comentários no PR.
 3. Push em `release/*` e o CD executando: build, smoke test, promoção e deploy.
 4. Aplicação no ar em staging: Swagger autenticado com bearer JWT e um fluxo completo de
@@ -441,4 +450,4 @@ Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 | [cd.md](cd.md) | Detalhamento da pipeline de entrega, rollback e troubleshooting |
 | [adr-001.md](adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway sob Onion Architecture |
 | [linguagem-ubiqua.md](linguagem-ubiqua.md) | Glossário do domínio |
-| [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`../terraform/README.md`](../terraform/README.md) | Manifests, ambiente local em Kubernetes e infraestrutura |
+| [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Manifests, ambiente local em Kubernetes e infraestrutura (repo separado) |

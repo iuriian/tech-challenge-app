@@ -7,7 +7,7 @@ por JWT de um emissor externo, empacotado em container e entregue num cluster GK
 
 | Documento | Responde |
 |---|---|
-| [solucao-e-arquitetura.md](solucao-e-arquitetura.md) | Descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infraestrutura provisionada e fluxo de deploy) e as instruções de execução local, deploy em Kubernetes e provisionamento com Terraform |
+| [solucao-e-arquitetura.md](solucao-e-arquitetura.md) | Descrição da solução e objetivos da fase, desenho da arquitetura (componentes, infraestrutura provisionada e fluxo de deploy) e as instruções de execução local, deploy em Kubernetes e a fronteira com a infraestrutura provisionada em repositório separado |
 | [arquitetura.svg](arquitetura.svg) | Desenho da arquitetura da solução — também em [PNG](arquitetura.png) e na fonte [Mermaid](arquitetura.mmd) |
 | [arquitetura-codigo.svg](arquitetura-codigo.svg) | Desenho da arquitetura de código e dos padrões aplicados — também em [PNG](arquitetura-codigo.png) e na fonte [Mermaid](arquitetura-codigo.mmd) |
 
@@ -37,7 +37,7 @@ por JWT de um emissor externo, empacotado em container e entregue num cluster GK
 | [`../README.md`](../README.md) | Como rodar o projeto localmente, autenticação, Swagger |
 | [`../k8s/README.md`](../k8s/README.md) | Manifests do Kubernetes e a ordem de aplicação |
 | [`../kind/README.md`](../kind/README.md) | Cluster local com kind, usando os mesmos manifests do GKE |
-| [`../terraform/README.md`](../terraform/README.md) | Provisionamento do cluster GKE e dos secrets |
+| [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Repositório separado: Terraform da VPC, do cluster GKE e dos secrets |
 
 ---
 

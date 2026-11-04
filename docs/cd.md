@@ -6,7 +6,7 @@ a tag dessa versão a promove para produção.
 - Workflows: [`cd-staging.yml`](../.github/workflows/cd-staging.yml) · [`cd-production.yml`](../.github/workflows/cd-production.yml)
 - Registry: GitHub Container Registry (`ghcr.io/iuriian/tech-challenge`)
 - Destinos: cluster **GKE**, namespaces `tech-challenge-staging` e `tech-challenge-production`
-- Infraestrutura: [`terraform/`](../terraform/) · Manifests: [`k8s/`](../k8s/)
+- Infraestrutura: [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) (repo separado) · Manifests: [`k8s/`](../k8s/)
 
 ---
 
@@ -160,9 +160,10 @@ interface do Actions.
 | Debug (`if: failure()`) | Imprime pods, services, PVCs, eventos e logs de todos os containers |
 
 **Sobre as senhas.** Elas não estão em nenhum lugar do repositório nem nos secrets do
-GitHub: o Terraform gera senhas aleatórias e as grava no Secret Manager; o pipeline
-as lê em runtime e chama `::add-mask::` antes de usá-las, porque valores lidos em
-tempo de execução não são mascarados automaticamente pelo GitHub.
+GitHub: o Terraform do repositório de infra gera senhas aleatórias e as grava no
+Secret Manager; o pipeline as lê em runtime e chama `::add-mask::` antes de usá-las,
+porque valores lidos em tempo de execução não são mascarados automaticamente pelo
+GitHub.
 
 ### O que o `k8s/deploy.sh` faz
 
@@ -194,25 +195,29 @@ indisponibilidade a cada deploy, aceitável em staging.
 ## 7. Infraestrutura
 
 A fronteira entre Terraform e Kubernetes é deliberada: **Terraform cuida do que dura,
-o pipeline cuida do que muda a cada commit.**
+o pipeline cuida do que muda a cada commit.** Ela separa também os repositórios — o
+Terraform vive em
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+com pipeline e state próprios.
 
-| Terraform (`terraform/`) | Pipeline + `k8s/` |
+| Terraform (repo de infra) | Pipeline + `k8s/` (este repo) |
 |---|---|
-| APIs do GCP, cluster GKE, node pool com autoscaling | Deployments, Services, ConfigMaps |
+| APIs do GCP, VPC e subnet, cluster GKE, node pool com autoscaling | Deployments, Services, ConfigMaps |
 | Service account do CI e papéis IAM | Secrets do cluster (lidos do Secret Manager) |
 | Secrets do Secret Manager e senhas aleatórias | Namespace e ordem de aplicação (`deploy.sh`) |
 
-Provisionamento inicial (uma vez, na mão):
+O provisionamento roda lá, não aqui: um Pull Request no repo de infra executa
+`terraform plan`, e o merge na main executa o `apply`. Nenhum workflow deste
+repositório chama Terraform — o `cd-staging.yml` apenas consome o cluster e os
+segredos que já existem.
 
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init && terraform apply              # 5 a 10 min
-terraform output github_environment_variables  # valores para o Environment do GitHub
-```
-
-O `terraform output` entrega exatamente os valores que precisam ser cadastrados no
-GitHub. Detalhes em [`terraform/README.md`](../terraform/README.md).
+O que atravessa a fronteira são três valores de identificação, lidos com
+`terraform output github_environment_variables` e cadastrados no Environment deste
+repositório (`GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_ZONE`), mais a chave da service
+account no secret `GCP_SA_KEY`. Trocar o nome ou a zona do cluster sem atualizar os
+secrets quebra o passo de `get-credentials`, porque este pipeline não tem outra forma
+de descobrir o destino. Detalhes em
+[README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -336,7 +341,7 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 | `Configuracao ausente no Environment 'staging'` | Falta secret ou variable | Conferir a tabela da seção 8 |
 | `ImagePullBackOff` | `ghcr-creds` com token expirado | Configurar `GHCR_PAT` e rodar o deploy de novo |
 | `O Service app nao recebeu IP externo` | Cota de LoadBalancer ou zona sem capacidade | `kubectl get svc -n <ns>` e checar cota do projeto |
-| Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no Terraform ou reduzir `requests` |
+| Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no repo de infra ou reduzir `requests` |
 | `401` com token válido | `AUTH_ISSUER_URI` ou `AUTH_AUDIENCE` divergentes do emissor | Conferir o `app-config` do namespace |
 | App sobe e cai em loop | Falha de migration ou de conexão com o banco | O passo Debug já imprime `logs -c app --previous` |
 

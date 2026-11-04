@@ -112,7 +112,7 @@ então um push direto em `develop` passa sem nenhuma verificação.
 1. Branch atualizada com o destino (`git merge origin/develop`).
 2. `./gradlew spotlessApply detekt test` verde localmente.
 3. Descrição com o card, o que muda e como testar.
-4. Sem arquivos de build, `.env` ou `terraform.tfstate` no diff.
+4. Sem arquivos de build, `.env` ou credenciais no diff.
 
 **Destino do PR**
 
@@ -255,6 +255,7 @@ Fora do git (veja `.gitignore`):
 
 - `build/`, `.gradle/`, `.kotlin/`, `.idea/`
 - `.env` — use `.env.example` como modelo e `create-env.sh` para gerar
-- `terraform/terraform.tfvars` e `*.tfstate` — o state grava valores sensíveis em texto puro
-- Qualquer credencial. As senhas de staging são geradas pelo Terraform e ficam no
-  Google Secret Manager; o pipeline as lê em runtime.
+- Qualquer credencial. As senhas de staging são geradas pelo Terraform do repositório
+  de infra e ficam no Google Secret Manager; o pipeline as lê em runtime
+- `*.tfvars` e `*.tfstate` seguem no `.gitignore` por segurança, embora o Terraform
+  tenha saído deste repositório — o state grava valores sensíveis em texto puro

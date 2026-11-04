@@ -11,7 +11,7 @@ O autoscaling tem duas camadas, e só as duas juntas escalam de verdade:
 | Camada | Onde | O que faz |
 |---|---|---|
 | **HPA** (pods) | [`k8s/app/hpa.yaml`](../k8s/app/hpa.yaml) | Cria réplicas do Deployment `app` quando a CPU passa do alvo |
-| **Cluster autoscaler** (nós) | [`terraform/`](../terraform) | Cria nós para acomodar os pods novos |
+| **Cluster autoscaler** (nós) | [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Cria nós para acomodar os pods novos |
 
 Parâmetros atuais do HPA:
 
