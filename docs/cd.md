@@ -353,6 +353,7 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 | `502` pelo gateway, `200` pelo IP do Service | Backend da api-config com o endereço antigo do LB | Comparar `terraform output -raw api_gateway_backend_host` com o IP do Service e reaplicar o Terraform de infra |
 | `401` do gateway em rota aberta | Path não declarado na spec do gateway, ou declarado sem `security: []` | Ajustar `openapi.yaml.tftpl` no repo de infra |
 | App sobe e cai em loop | Falha de migration ou de conexão com o banco | O passo Debug já imprime `logs -c app --previous` |
+| `503 temporarily_unavailable` ao pedir token | Instância do Cloud SQL desligada, ou o role `auth_ro` não existe nela | `gcloud sql instances list` e `gcloud sql users list`; o role é provisionado pelo repo `tech-challenge-database`, e os `GRANT` das views vêm do callback `afterMigrate__contrato_leitura_auth.sql` no boot da aplicação |
 
 O passo **Debug** só roda em falha e imprime pods, services, PVCs, eventos do
 namespace, logs do init container `wait-for-db` e do container da aplicação
