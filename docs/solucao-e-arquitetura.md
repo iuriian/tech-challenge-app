@@ -419,10 +419,17 @@ documentado no [README do repo de infra](https://github.com/iuriian/tech-challen
 | **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` (local) ou `http://<IP-do-LoadBalancer>/swagger-ui/index.html` (staging) |
 | **OpenAPI JSON** | `/v3/api-docs` |
 
-A collection completa cobre todos os recursos descritos na seção 3.2; a de payloads
-de teste não inclui o catálogo de serviços. Para os endpoints protegidos, obtenha o
-token no emissor configurado em `AUTH_ISSUER_URI` — o perfil do token precisa ser um
-dos listados no `@RolesAllowed` da operação, senão a resposta é `403`.
+As duas collections cobrem todos os recursos descritos na seção 3.2; a diferença é que
+a completa traz também os endpoints públicos do Actuator e a pasta de carga. Para os
+endpoints protegidos, obtenha o token com `POST {AUTH_ISSUER_URI}/auth/token` e
+`{"cpf": "..."}` no corpo — as duas collections têm um request pronto para isso na pasta
+`00`. O perfil vem do cadastro do CPF, não da requisição, e precisa ser um dos listados
+no `@RolesAllowed` da operação, senão a resposta é `403`.
+
+> Nenhum CPF produz o perfil `ADMIN` hoje: `funcionarios` aceita apenas
+> `cargo IN ('ATENDENTE', 'MECANICO')` e o enum `Cargo` conhece só esses dois. O emissor
+> já traduz `ADMIN`, mas as operações `@RolesAllowed("ADMIN")` ficam inalcançáveis até
+> que a constraint e o enum sejam ampliados aqui.
 
 ---
 
