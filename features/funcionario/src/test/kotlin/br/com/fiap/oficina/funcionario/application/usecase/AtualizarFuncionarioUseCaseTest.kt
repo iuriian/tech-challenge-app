@@ -5,7 +5,7 @@ import br.com.fiap.oficina.funcionario.application.mapper.FuncionarioMapper
 import br.com.fiap.oficina.funcionario.domain.Cargo
 import br.com.fiap.oficina.funcionario.domain.Funcionario
 import br.com.fiap.oficina.funcionario.domain.FuncionarioRepository
-import br.com.fiap.oficina.shared.domain.exception.BusinessRuleException
+import br.com.fiap.oficina.shared.domain.exception.ConflictException
 import br.com.fiap.oficina.shared.domain.exception.EntityNotFoundException
 import br.com.fiap.oficina.shared.domain.valueobject.CPF
 import io.mockk.every
@@ -197,7 +197,7 @@ class AtualizarFuncionarioUseCaseTest {
         every { repositoryMock.buscarPorCpf(any()) } returns outroFuncionario
 
         val exception =
-            assertFailsWith<BusinessRuleException> {
+            assertFailsWith<ConflictException> {
                 usecase.executar(ID_EXISTENTE, request)
             }
 

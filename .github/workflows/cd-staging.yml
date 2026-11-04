@@ -100,8 +100,7 @@ jobs:
             DB_URL=jdbc:postgresql://smoke-db:5432/oficina
             DB_USERNAME=user
             DB_PASSWORD=password
-            KEYCLOAK_URL=http://keycloak.invalid:8080
-            KEYCLOAK_REALM=Fiap
+            AUTH_ISSUER_URI=http://auth.invalid
 
   promote:
     name: Promover tags estaveis
@@ -162,6 +161,7 @@ jobs:
       url: ${{ steps.expose.outputs.url }}
     env:
       KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE || 'tech-challenge-staging' }}
+      DB_USER: ${{ vars.DB_USER || 'oficina_app' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -201,6 +201,20 @@ jobs:
       - name: Install gke-gcloud-auth-plugin
         run: gcloud components install gke-gcloud-auth-plugin
 
+      - name: Resolve Cloud SQL
+        id: db
+        run: |
+          set -euo pipefail
+          INSTANCE="${{ secrets.GKE_CLUSTER }}-pg"
+          read -r POLICY DB_HOST < <(gcloud sql instances describe "$INSTANCE" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --format="value(settings.activationPolicy,ipAddresses[0].ipAddress)")
+          if [ "$POLICY" != "ALWAYS" ]; then
+            echo "::error::Cloud SQL desligado. Ligue pelo repo database: Actions > Cloud SQL - Liga/Desliga"
+            exit 1
+          fi
+          echo "host=$DB_HOST" >> "$GITHUB_OUTPUT"
+
       - name: Configure kubectl
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} \
@@ -219,37 +233,23 @@ jobs:
           DB_PASSWORD=$(gcloud secrets versions access latest \
             --secret="${{ secrets.GKE_CLUSTER }}-db-password" \
             --project="${{ secrets.GCP_PROJECT_ID }}")
-          KC_PASSWORD=$(gcloud secrets versions access latest \
-            --secret="${{ secrets.GKE_CLUSTER }}-keycloak-admin-password" \
-            --project="${{ secrets.GCP_PROJECT_ID }}")
 
           # Valores lidos em runtime nao sao mascarados automaticamente pelo
           # GitHub; sem isto, um comando verboso poderia imprimi-los no log.
           echo "::add-mask::$DB_PASSWORD"
-          echo "::add-mask::$KC_PASSWORD"
 
           if [ -z "$DB_PASSWORD" ]; then
             echo "::error::Secret Manager devolveu senha vazia para ${{ secrets.GKE_CLUSTER }}-db-password"
             exit 1
           fi
-          if [ -z "$KC_PASSWORD" ]; then
-            echo "::error::Secret Manager devolveu senha vazia para ${{ secrets.GKE_CLUSTER }}-keycloak-admin-password"
-            exit 1
-          fi
 
           kubectl create secret generic db-credentials \
-            --from-literal=POSTGRES_USER=user \
+            --from-literal=POSTGRES_USER="${{ env.DB_USER }}" \
             --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD" \
             -n ${{ env.KUBE_NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
-          kubectl create secret generic keycloak-credentials \
-            --from-literal=KEYCLOAK_ADMIN_USER=admin \
-            --from-literal=KEYCLOAK_ADMIN_PASSWORD="$KC_PASSWORD" \
-            -n ${{ env.KUBE_NAMESPACE }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-          echo "✅ Secrets db-credentials e keycloak-credentials aplicados"
+          echo "✅ Secrets db-credentials aplicado"
 
       - name: Create GHCR pull secret
         run: |
@@ -267,14 +267,19 @@ jobs:
         run: |
           kubectl apply --dry-run=server \
             -f k8s/app/configmap.yaml \
-            -f k8s/postgres/pvc.yaml \
-            -f k8s/postgres/deployment.yaml \
-            -f k8s/keycloak/service.yaml \
             -f k8s/app/hpa.yaml \
             -n ${{ env.KUBE_NAMESPACE }}
 
       - name: Deploy to Kubernetes
+        env:
+          AUTH_ISSUER_URI: ${{ vars.AUTH_ISSUER_URI }}
+          DB_HOST: ${{ steps.db.outputs.host }}
+          DB_SSLMODE: require
         run: |
+          if [ -z "$AUTH_ISSUER_URI" ]; then
+            echo "::error::Variable AUTH_ISSUER_URI ausente no Environment 'staging' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
+            exit 1
+          fi
           chmod +x ./k8s/deploy.sh
           echo "🚀 Deploying image: ${{ needs.build.outputs.image }}"
           ./k8s/deploy.sh "${{ needs.build.outputs.image }}" staging ${{ env.KUBE_NAMESPACE }}
@@ -297,8 +302,6 @@ jobs:
             exit 1
           fi
 
-          KC_IP=$(kubectl get svc keycloak -n $NS -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-
           echo "🔍 Testando http://${APP_IP}/actuator/health"
           for i in $(seq 1 30); do
             if curl -fsS --max-time 10 "http://${APP_IP}/actuator/health"; then
@@ -312,7 +315,6 @@ jobs:
                 echo "|---|---|"
                 echo "| Aplicacao | http://${APP_IP} |"
                 echo "| Swagger UI | http://${APP_IP}/swagger-ui/index.html |"
-                echo "| Keycloak | http://${KC_IP}:8080 |"
                 echo "| Namespace | \`${NS}\` |"
                 echo "| Imagem | \`${{ needs.build.outputs.image }}\` |"
               } >> "$GITHUB_STEP_SUMMARY"
@@ -344,10 +346,6 @@ jobs:
           kubectl get svc -n $NS || true
 
           echo ""
-          echo "=================== PVC ==================="
-          kubectl get pvc -n $NS || true
-
-          echo ""
           echo "=================== EVENTOS DO POD APP ==================="
           kubectl describe pod -l app=app -n $NS | sed -n '/Events:/,$p' || true
 
@@ -359,10 +357,6 @@ jobs:
           echo "=================== LOGS APP (container) ==================="
           kubectl logs -l app=app -n $NS -c app --tail=80 || true
           kubectl logs -l app=app -n $NS -c app --previous --tail=80 || true
-
-          echo ""
-          echo "=================== LOGS KEYCLOAK ==================="
-          kubectl logs -l app=keycloak -n $NS --all-containers --tail=40 || true
 
           echo ""
           echo "=================== EVENTOS DO NAMESPACE ==================="

@@ -1,11 +1,12 @@
 # Entrega Contínua (CD)
 
-Como um commit numa branch de release vira uma aplicação no ar em staging.
+Como um commit numa branch de release vira uma aplicação no ar em staging, e como
+a tag dessa versão a promove para produção.
 
-- Workflow: [`.github/workflows/cd-staging.yml`](../.github/workflows/cd-staging.yml)
+- Workflows: [`cd-staging.yml`](../.github/workflows/cd-staging.yml) · [`cd-production.yml`](../.github/workflows/cd-production.yml)
 - Registry: GitHub Container Registry (`ghcr.io/iuriian/tech-challenge`)
-- Destino: cluster **GKE**, namespace `tech-challenge-staging`
-- Infraestrutura: [`terraform/`](../terraform/) · Manifests: [`k8s/`](../k8s/)
+- Destinos: cluster **GKE**, namespaces `tech-challenge-staging` e `tech-challenge-production`
+- Infraestrutura: [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) (repo separado) · Manifests: [`k8s/`](../k8s/)
 
 ---
 
@@ -15,6 +16,12 @@ Como um commit numa branch de release vira uma aplicação no ar em staging.
 on:
   push:
     branches: ["release/**"]
+  workflow_dispatch:
+
+# cd-production.yml
+on:
+  push:
+    tags: ["v*.*.*"]
   workflow_dispatch:
 
 concurrency:
@@ -145,7 +152,7 @@ interface do Actions.
 | Setup Google Cloud | `google-github-actions/auth` com `GCP_SA_KEY` |
 | Configure kubectl | `gcloud container clusters get-credentials` + `gke-gcloud-auth-plugin` |
 | Ensure namespace | Cria `tech-challenge-staging` se não existir |
-| Create cluster secrets | Lê as senhas do **Google Secret Manager** e cria `db-credentials` e `keycloak-credentials` |
+| Create cluster secrets | Lê a senha do **Google Secret Manager** e cria `db-credentials` |
 | Create GHCR pull secret | Cria `ghcr-creds` para o cluster puxar a imagem privada |
 | Validate manifests | `kubectl apply --dry-run=server` — valida contra o cluster real, sem aplicar |
 | Deploy | `./k8s/deploy.sh <digest> staging <namespace>` |
@@ -153,28 +160,31 @@ interface do Actions.
 | Debug (`if: failure()`) | Imprime pods, services, PVCs, eventos e logs de todos os containers |
 
 **Sobre as senhas.** Elas não estão em nenhum lugar do repositório nem nos secrets do
-GitHub: o Terraform gera senhas aleatórias e as grava no Secret Manager; o pipeline
-as lê em runtime e chama `::add-mask::` antes de usá-las, porque valores lidos em
-tempo de execução não são mascarados automaticamente pelo GitHub.
+GitHub: o Terraform do repositório de infra gera senhas aleatórias e as grava no
+Secret Manager; o pipeline as lê em runtime e chama `::add-mask::` antes de usá-las,
+porque valores lidos em tempo de execução não são mascarados automaticamente pelo
+GitHub.
 
 ### O que o `k8s/deploy.sh` faz
 
 A ordem existe por um motivo, e é o que o script encapsula:
 
-1. **Secrets** — cria os de desenvolvimento só se ainda não existirem (no pipeline já
-   vieram do Secret Manager).
-2. **ConfigMaps** — `postgres-initdb` e `keycloak-realm` são gerados a partir de
-   `conf/init-db/` e `conf/realm-export.json`, os mesmos arquivos do
-   `docker-compose.yml`. Nada de realm duplicado.
-3. **PostgreSQL** — PVC antes do Deployment, senão o pod fica `Pending`.
-4. **Service do Keycloak** e espera pelo IP externo (até 300s).
-5. **Deployment do Keycloak** com `KC_HOSTNAME` = IP público. O `issuer` do token
-   precisa ser idêntico à URL por onde o usuário autenticou — é por isso que o
-   endereço precisa ser conhecido antes.
-6. **Aplicação**, com o digest da imagem e `KEYCLOAK_URL` público, mas
-   `KEYCLOAK_JWK_SET_URI` interno (`http://keycloak:8080`), para buscar as chaves sem
-   sair do cluster.
-7. **HPA** por último — aplicado antes, o alvo não existiria.
+1. **Secrets** — apenas exige que `db-credentials` já exista no namespace e aborta se
+   não existir. Um padrão de desenvolvimento nunca casaria com a senha do usuário no
+   Cloud SQL, e o erro só apareceria depois, como `CrashLoopBackOff`. No pipeline o
+   secret vem do Secret Manager. O checksum dele entra no pod template, para que uma
+   senha corrigida force um ReplicaSet novo em vez de um apply no-op.
+2. **ConfigMap `app-config`** — recebe `DB_HOST` (IP privado do Cloud SQL),
+   `DB_SSLMODE`, issuer e audience dos tokens no lugar dos placeholders.
+3. **Aplicação**, com o digest da imagem. Emissor de tokens e banco são ambos
+   externos ao cluster e chegam pelo `app-config`, sem Service nem descoberta de
+   IP. O initContainer `wait-for-db` espera o `pg_isready` no `DB_HOST`.
+4. **HPA** por último — aplicado antes, o alvo não existiria.
+
+Não há passo de PostgreSQL: o banco é um Cloud SQL externo, provisionado pelo
+repositório `tech-challenge-database`. O job de deploy resolve o IP privado com
+`gcloud sql instances describe` e aborta se a instância estiver desligada. A pasta
+`k8s/postgres/` e o ConfigMap `postgres-initdb` servem apenas ao ambiente com kind.
 
 O Deployment da aplicação usa `maxSurge: 0`: o pod antigo cai antes do novo subir.
 Num único nó `e2-medium` não há CPU para dois pods simultâneos. O custo é uma breve
@@ -185,25 +195,29 @@ indisponibilidade a cada deploy, aceitável em staging.
 ## 7. Infraestrutura
 
 A fronteira entre Terraform e Kubernetes é deliberada: **Terraform cuida do que dura,
-o pipeline cuida do que muda a cada commit.**
+o pipeline cuida do que muda a cada commit.** Ela separa também os repositórios — o
+Terraform vive em
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+com pipeline e state próprios.
 
-| Terraform (`terraform/`) | Pipeline + `k8s/` |
+| Terraform (repo de infra) | Pipeline + `k8s/` (este repo) |
 |---|---|
-| APIs do GCP, cluster GKE, node pool com autoscaling | Deployments, Services, ConfigMaps |
+| APIs do GCP, VPC e subnet, cluster GKE, node pool com autoscaling | Deployments, Services, ConfigMaps |
 | Service account do CI e papéis IAM | Secrets do cluster (lidos do Secret Manager) |
 | Secrets do Secret Manager e senhas aleatórias | Namespace e ordem de aplicação (`deploy.sh`) |
 
-Provisionamento inicial (uma vez, na mão):
+O provisionamento roda lá, não aqui: um Pull Request no repo de infra executa
+`terraform plan`, e o merge na main executa o `apply`. Nenhum workflow deste
+repositório chama Terraform — o `cd-staging.yml` apenas consome o cluster e os
+segredos que já existem.
 
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init && terraform apply              # 5 a 10 min
-terraform output github_environment_variables  # valores para o Environment do GitHub
-```
-
-O `terraform output` entrega exatamente os valores que precisam ser cadastrados no
-GitHub. Detalhes em [`terraform/README.md`](../terraform/README.md).
+O que atravessa a fronteira são três valores de identificação, lidos com
+`terraform output github_environment_variables` e cadastrados no Environment deste
+repositório (`GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_ZONE`), mais a chave da service
+account no secret `GCP_SA_KEY`. Trocar o nome ou a zona do cluster sem atualizar os
+secrets quebra o passo de `get-credentials`, porque este pipeline não tem outra forma
+de descobrir o destino. Detalhes em
+[README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -215,10 +229,25 @@ Settings → Environments → **staging**
 |---|---|---|---|
 | Secret | `GCP_SA_KEY` | sim | JSON da service account do CI |
 | Secret | `GHCR_PAT` | recomendado | PAT com `read:packages`. Sem ele o `GITHUB_TOKEN` é usado e **expira ao fim do job** — pods que reiniciarem depois falham com `ImagePullBackOff` |
-| Variable | `GCP_PROJECT_ID` | sim | Projeto no GCP |
-| Variable | `GKE_CLUSTER` | sim | Nome do cluster (também prefixa os secrets no Secret Manager) |
-| Variable | `GKE_ZONE` | sim | Zona do cluster |
+| Secret | `GCP_PROJECT_ID` | sim | Projeto no GCP |
+| Secret | `GKE_CLUSTER` | sim | Nome do cluster (também prefixa os secrets no Secret Manager) |
+| Secret | `GKE_ZONE` | sim | Zona do cluster |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
+| Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens; o deploy aborta se estiver vazia |
+| Variable | `DB_USER` | não | Padrão: `oficina_app` |
+
+Settings → Environments → **production**
+
+| Tipo | Nome | Obrigatório | Descrição |
+|---|---|---|---|
+| Proteção | **Required reviewers** | recomendado | É daqui que vem a aprovação manual: o workflow não a implementa |
+| Secret | `GCP_SA_KEY` · `GCP_PROJECT_ID` · `GKE_CLUSTER` · `GKE_ZONE` | sim | Mesmo papel que em staging, apontando para o ambiente de produção |
+| Secret | `GHCR_PAT` | **sim** | Diferente de staging: aqui a falta dele é erro, não aviso |
+| Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens de produção |
+| Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-production` |
+| Variable | `CLOUDSQL_INSTANCE` | não | Padrão: `<GKE_CLUSTER>-pg` |
+| Variable | `DB_PASSWORD_SECRET` | não | Padrão: `<GKE_CLUSTER>-db-password` |
+| Variable | `DB_USER` | não | Padrão: `oficina_app` |
 
 ---
 
@@ -226,18 +255,60 @@ Settings → Environments → **staging**
 
 | Ambiente | Como sobe | Onde | Banco |
 |---|---|---|---|
-| Local (dev) | `docker-compose up -d db keycloak` + `./gradlew bootRun` | máquina | container descartável |
+| Local (dev) | `docker-compose up -d db` + `./gradlew bootRun` | máquina | container descartável |
 | Local (stack) | `docker-compose --profile full up -d` | máquina | container + volume |
 | Local (k8s) | `./kind/deploy-local.sh` | cluster kind, **mesmos manifests do GKE** | PVC do kind |
-| Staging | push em `release/*` | GKE | PVC de 10Gi |
-| Produção | — | — | **não existe ainda** |
+| Staging | push em `release/*` | GKE | Cloud SQL externo (repo `tech-challenge-database`) |
+| Produção | tag `vX.Y.Z` em `main` | GKE | Cloud SQL externo (instância própria) |
 
 O ambiente `kind` é o ensaio: valida os manifests de `k8s/` sem gastar recurso na
 nuvem. Veja [`kind/README.md`](../kind/README.md).
 
 ---
 
-## 10. Rollback
+## 10. Pipeline de produção
+
+Produção **não builda imagem**. Ela promove para o cluster o digest exato que o CD
+de staging buildou, passou no smoke test e colocou no ar em homologação. Rebuildar a
+partir da tag geraria um digest diferente do validado, e a promessa "o que foi
+testado é o que sobe" se perderia.
+
+O elo entre o git e o registry é a versão:
+
+```
+tag git v1.1.0  →  ghcr.io/<repo>:release-1.1.0  →  digest validado
+```
+
+A tag `release-1.1.0` é a que o job `promote` aplicou sobre o digest testado quando
+houve push em `release/1.1.0`. Se ela não existir no GHCR, o job falha dizendo que
+aquela versão nunca passou por homologação — **não há caminho para produção que pule
+o staging**.
+
+| Job | O que faz |
+|---|---|
+| `resolve` | valida a versão em MAJOR.MINOR.PATCH, confere que o commit da tag está em `main` e resolve o digest |
+| `smoke-test` | reusa a mesma composite action do staging contra o digest resolvido |
+| `deploy-production` | `environment: production`, Cloud SQL, secrets, deploy, verificação e rollback |
+| `tag-released` | marca o digest com `:production` e `:vX.Y.Z` no registry |
+
+Quatro diferenças deliberadas em relação ao staging:
+
+1. **Guarda de `main`** — `git branch -r --contains` rejeita tag criada fora de `main`.
+2. **`GHCR_PAT` é obrigatório** — em staging a falta dele é aviso; aqui é erro. O
+   `GITHUB_TOKEN` expira ao fim do job e todo pod que reiniciar depois cai em
+   `ImagePullBackOff`.
+3. **Rollback automático** — a imagem corrente é gravada antes do deploy; se qualquer
+   passo falhar, o Deployment volta para ela.
+4. **Instância e secret parametrizáveis** — `vars.CLOUDSQL_INSTANCE` e
+   `vars.DB_PASSWORD_SECRET`, com fallback para `<GKE_CLUSTER>-pg` e
+   `<GKE_CLUSTER>-db-password`.
+
+A aprovação manual não está no workflow: ela vem dos *required reviewers* do
+Environment `production`, configurados em Settings > Environments.
+
+---
+
+## 11. Rollback
 
 Não há rollback automático. Se o deploy subir algo quebrado:
 
@@ -263,15 +334,15 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 
 ---
 
-## 11. Quando o deploy falha
+## 12. Quando o deploy falha
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
 | `Configuracao ausente no Environment 'staging'` | Falta secret ou variable | Conferir a tabela da seção 8 |
 | `ImagePullBackOff` | `ghcr-creds` com token expirado | Configurar `GHCR_PAT` e rodar o deploy de novo |
 | `O Service app nao recebeu IP externo` | Cota de LoadBalancer ou zona sem capacidade | `kubectl get svc -n <ns>` e checar cota do projeto |
-| Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no Terraform ou reduzir `requests` |
-| `issuer` inválido ao autenticar | Keycloak não recebeu IP a tempo e ficou com issuer interno | Ver o aviso no log do `deploy.sh` e refazer o deploy |
+| Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no repo de infra ou reduzir `requests` |
+| `401` com token válido | `AUTH_ISSUER_URI` ou `AUTH_AUDIENCE` divergentes do emissor | Conferir o `app-config` do namespace |
 | App sobe e cai em loop | Falha de migration ou de conexão com o banco | O passo Debug já imprime `logs -c app --previous` |
 
 O passo **Debug** só roda em falha e imprime pods, services, PVCs, eventos do
@@ -280,10 +351,14 @@ namespace, logs do init container `wait-for-db` e do container da aplicação
 
 ---
 
-## 12. Limitações e próximos passos
+## 13. Limitações e próximos passos
 
-- **Não existe pipeline de produção.** `main` não dispara deploy nenhum. Um
-  `cd-production.yml` acionado por tag `v*` seria o passo natural.
+- **O pipeline de produção nunca executou.** O `cd-production.yml` existe e está
+  lintado, mas autenticação no GCP, lookup do Cloud SQL e rollout só se provam na
+  primeira execução real. Dispare a primeira por `workflow_dispatch`, com uma versão
+  já validada, em vez de descobrir na primeira tag.
+- **O HPA é o mesmo nos dois ambientes.** `k8s/app/hpa.yaml` está fixo em 1 a 3
+  réplicas, dimensionamento pensado para staging.
 - **Sem aprovação manual.** O Environment `staging` não tem *required reviewers*;
   qualquer push em `release/*` sobe direto.
 - **A imagem é construída sem rodar testes.** O `Dockerfile` usa `bootJar -x test` e o

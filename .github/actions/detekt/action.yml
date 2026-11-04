@@ -69,7 +69,7 @@ runs:
           function findXmlReports() {
             const reports = [];
           
-            const rootReport = path.join(workspace, 'build/reports/detekt/detekt.xml');
+            const rootReport = path.join(workspace, 'api/build/reports/detekt/detekt.xml');
             if (fs.existsSync(rootReport)) {
               reports.push(rootReport);
             }

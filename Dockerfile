@@ -8,15 +8,17 @@ WORKDIR /workspace
 
 # Copia primeiro os arquivos de build para aproveitar o cache de camadas:
 # enquanto build.gradle.kts/wrapper nao mudam, o passo de dependencias e reusado.
-COPY gradlew settings.gradle.kts build.gradle.kts ./
+COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
-RUN chmod +x gradlew && ./gradlew --no-daemon dependencies --quiet || true
+COPY build-logic ./build-logic
+RUN chmod +x gradlew && ./gradlew --no-daemon help --quiet || true
 
 # Compila a aplicacao (testes rodam em jobs/etapas dedicados do CI)
-COPY src ./src
+COPY shared ./shared
 COPY features ./features
-RUN ./gradlew --no-daemon clean bootJar -x test \
-    && cp build/libs/*.jar application.jar
+COPY api ./api
+RUN ./gradlew --no-daemon :api:bootJar -x test \
+    && cp api/build/libs/*.jar application.jar
 
 # Extrai as camadas do jar do Spring Boot para otimizar o cache em runtime
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination extracted

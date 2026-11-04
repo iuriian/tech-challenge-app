@@ -127,5 +127,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: build/libs/
+          path: api/build/libs/
           retention-days: 7
