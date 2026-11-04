@@ -2,6 +2,7 @@ package br.com.fiap.oficina.servico
 
 import br.com.fiap.oficina.servico.application.dto.ServicoRequest
 import br.com.fiap.oficina.servico.application.dto.ServicoResponse
+import br.com.fiap.oficina.servico.application.port.ServicoQueryDto
 import br.com.fiap.oficina.servico.domain.Servico
 import br.com.fiap.oficina.servico.infrastructure.persistence.ServicoJPA
 import java.math.BigDecimal
@@ -37,6 +38,13 @@ internal object ServicoFixtures {
     )
 
     fun response(servico: Servico) = ServicoResponse(
+        id = servico.id.toString(),
+        descricao = servico.descricao,
+        valor = servico.valor,
+        ativo = servico.ativo,
+    )
+
+    fun queryDto(servico: Servico) = ServicoQueryDto(
         id = servico.id.toString(),
         descricao = servico.descricao,
         valor = servico.valor,
