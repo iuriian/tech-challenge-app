@@ -1,0 +1,43 @@
+flowchart TB
+    %% Arquitetura de código — monolito modular em Gradle
+    %% Setas cheias: dependência de compilação (aponta sempre para o domínio).
+    %% Setas tracejadas: comunicação entre módulos de feature, sempre por contrato.
+    %% Renderizar:
+    %%   npx -y @mermaid-js/mermaid-cli -i docs/arquitetura-codigo.mmd -o docs/arquitetura-codigo.svg
+    %%   npx -y @mermaid-js/mermaid-cli -i docs/arquitetura-codigo.mmd -o docs/arquitetura-codigo.png -s 2
+    subgraph api[":api — única fronteira HTTP"]
+        direction TB
+        contrato["contract · 6 interfaces *Api<br/>@RequestMapping · @RolesAllowed · @Operation"]
+        controller["controller · 6 controllers internal<br/>implementam o contrato e delegam"]
+        erro["exception · GlobalExceptionHandler<br/>12 handlers · ErrorResponse"]
+        config["config · Security · OpenApi · Tomcat"]
+    end
+
+    subgraph feature[":features:cliente · funcionario · peca · veiculo · servico · ordemservico"]
+        direction TB
+        aplicacao["application<br/>44 use cases (interface + *UseCaseImpl @Service)<br/>24 DTOs · 20 mappers · 5 *QueryPort"]
+        dominio["domain<br/>entidades · value objects · máquina de estados<br/>6 repositórios · 6 portas Consultar*"]
+        infraestrutura["infrastructure<br/>*RepositoryImpl · 9 entidades *JPA · 18 mappers<br/>adaptadores de ACL · *QueryProvider · *Config"]
+    end
+
+    shared[":shared — kernel compartilhado<br/>DomainException e derivadas<br/>CPF · CNPJ · Placa · AggregateId<br/>contratos de mapper"]
+
+    controller --> contrato
+    controller --> aplicacao
+    aplicacao --> dominio
+    infraestrutura --> dominio
+    config -.->|habilita o RBAC dos contratos| contrato
+
+    infraestrutura -.->|"entre features: *QueryPort + adaptador de ACL"| aplicacao
+    aplicacao -.-> shared
+    dominio -.-> shared
+    infraestrutura -.-> shared
+    erro -.-> shared
+
+
+    classDef borda fill:#eef2f7,stroke:#64748b,stroke-width:1px,color:#0f172a
+    classDef nucleo fill:#eafaf1,stroke:#047857,stroke-width:1px,color:#0f172a
+    classDef apoio fill:#fef6e7,stroke:#b45309,stroke-width:1px,color:#0f172a
+    class contrato,controller,erro,config borda
+    class dominio,aplicacao nucleo
+    class infraestrutura,shared apoio
