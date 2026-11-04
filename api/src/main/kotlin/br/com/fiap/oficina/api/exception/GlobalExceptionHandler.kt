@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -32,6 +33,21 @@ internal class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException::class)
     fun conflito(ex: ConflictException, request: HttpServletRequest) =
         erro(HttpStatus.CONFLICT, "Conflito com o estado atual do recurso", ex.message, request)
+
+    /**
+     * Negativa do method security (`@RolesAllowed`) na invocação do controller.
+     *
+     * Sem este handler a exceção cai no catch-all de [Exception] e o cliente recebe
+     * 500: a cadeia de filtros do Spring Security só traduz para 403 o que escapa do
+     * servlet, e o `@RestControllerAdvice` intercepta antes disso.
+     */
+    @ExceptionHandler(AccessDeniedException::class)
+    fun semPermissao(request: HttpServletRequest) = erro(
+        HttpStatus.FORBIDDEN,
+        "Perfil sem permissão para a operação",
+        "O perfil autenticado não tem permissão para ${request.method} ${request.requestURI}",
+        request,
+    )
 
     @ExceptionHandler(BusinessRuleException::class)
     fun regraDeNegocio(ex: BusinessRuleException, request: HttpServletRequest) =
