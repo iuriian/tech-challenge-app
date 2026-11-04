@@ -8,12 +8,25 @@ import br.com.fiap.oficina.cliente.application.dto.EnderecoRequest
 import br.com.fiap.oficina.cliente.application.dto.EnderecoResponse
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioRequest
 import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
+import br.com.fiap.oficina.ordemservico.application.dto.AlterarStatusRequest
+import br.com.fiap.oficina.ordemservico.application.dto.ItemOrcamentoRequest
+import br.com.fiap.oficina.ordemservico.application.dto.ItemOrcamentoResponse
+import br.com.fiap.oficina.ordemservico.application.dto.OrcamentoResponse
+import br.com.fiap.oficina.ordemservico.application.dto.OrdemServicoRequest
+import br.com.fiap.oficina.ordemservico.application.dto.OrdemServicoResponse
+import br.com.fiap.oficina.ordemservico.application.dto.TempoMedioExecucaoResponse
+import br.com.fiap.oficina.ordemservico.domain.OrdemServicoStatus
+import br.com.fiap.oficina.ordemservico.domain.TipoItemOrcamento
 import br.com.fiap.oficina.peca.application.dto.PecaRequest
 import br.com.fiap.oficina.peca.application.dto.PecaResponse
+import br.com.fiap.oficina.servico.application.dto.ServicoRequest
+import br.com.fiap.oficina.servico.application.dto.ServicoResponse
 import br.com.fiap.oficina.veiculo.application.dto.ProprietarioResponse
 import br.com.fiap.oficina.veiculo.application.dto.VeiculoRequest
 import br.com.fiap.oficina.veiculo.application.dto.VeiculoResponse
 import java.math.BigDecimal
+import java.time.Instant
+import java.util.UUID
 
 /** Massa de teste compartilhada pelos testes de controller do modulo api. */
 internal object ApiFixtures {
@@ -22,12 +35,16 @@ internal object ApiFixtures {
     const val PECA_ID = "00000000-0000-0000-0000-000000000300"
     const val VEICULO_ID = "00000000-0000-0000-0000-000000000400"
     const val PROPRIETARIO_ID = "00000000-0000-0000-0000-000000000500"
+    const val SERVICO_ID = "00000000-0000-0000-0000-000000000600"
+    const val ORDEM_SERVICO_ID = "00000000-0000-0000-0000-000000000700"
 
     const val CPF = "01234567890"
     const val NOME_CLIENTE = "Joao Silva"
     const val EMAIL = "joao.silva@email.com"
     const val CODIGO_PECA = "PEC001"
     const val PLACA = "ABC1234"
+    const val DESCRICAO_SERVICO = "Troca de pastilha de freio"
+    const val DESCRICAO_ORDEM_SERVICO = "Revisao de 10.000 km"
 
     fun enderecoRequest() = EnderecoRequest(
         logradouro = "Rua das Flores",
@@ -125,4 +142,61 @@ internal object ApiFixtures {
             numeroDocumento = "012.345.678-90",
         ),
     )
+
+    fun servicoRequest(descricao: String = DESCRICAO_SERVICO, valor: BigDecimal = BigDecimal("250.00")) =
+        ServicoRequest(descricao = descricao, valor = valor)
+
+    fun servicoResponse(id: String = SERVICO_ID, descricao: String = DESCRICAO_SERVICO, ativo: Boolean = true) =
+        ServicoResponse(id = id, descricao = descricao, valor = BigDecimal("250.00"), ativo = ativo)
+
+    fun itemOrcamentoRequest(
+        tipo: TipoItemOrcamento = TipoItemOrcamento.SERVICO,
+        referenciaId: String = SERVICO_ID,
+        quantidade: BigDecimal = BigDecimal.ONE,
+    ) = ItemOrcamentoRequest(tipo = tipo, referenciaId = referenciaId, quantidade = quantidade)
+
+    fun ordemServicoRequest(descricao: String = DESCRICAO_ORDEM_SERVICO, clienteId: String = CLIENTE_ID) =
+        OrdemServicoRequest(
+            descricao = descricao,
+            funcionarioId = FUNCIONARIO_ID,
+            clienteId = clienteId,
+            veiculoId = VEICULO_ID,
+            itens = listOf(itemOrcamentoRequest()),
+        )
+
+    fun ordemServicoResponse(
+        id: String = ORDEM_SERVICO_ID,
+        status: OrdemServicoStatus = OrdemServicoStatus.RECEBIDA,
+        descricao: String = DESCRICAO_ORDEM_SERVICO,
+    ) = OrdemServicoResponse(
+        id = id,
+        descricao = descricao,
+        status = status,
+        funcionarioId = FUNCIONARIO_ID,
+        clienteId = CLIENTE_ID,
+        veiculoId = VEICULO_ID,
+        itens = listOf(itemOrcamentoResponse()),
+        dataAbertura = Instant.parse("2026-01-10T12:00:00Z"),
+        dataInicioExecucao = null,
+        dataFinalizacao = null,
+    )
+
+    fun itemOrcamentoResponse() = ItemOrcamentoResponse(
+        tipo = TipoItemOrcamento.SERVICO,
+        referenciaId = UUID.fromString(SERVICO_ID),
+        codigoReferencia = null,
+        descricao = DESCRICAO_SERVICO,
+        valorUnitario = BigDecimal("250.00"),
+        quantidade = BigDecimal.ONE,
+        subtotal = BigDecimal("250.00"),
+    )
+
+    fun orcamentoResponse() =
+        OrcamentoResponse(itens = listOf(itemOrcamentoResponse()), valorTotal = BigDecimal("250.00"))
+
+    fun alterarStatusRequest(status: OrdemServicoStatus = OrdemServicoStatus.EM_DIAGNOSTICO) =
+        AlterarStatusRequest(status = status)
+
+    fun tempoMedioExecucaoResponse(total: Int = 3, tempoMedioMinutos: Double? = 125.5) =
+        TempoMedioExecucaoResponse(totalOrdensFinalizadas = total, tempoMedioMinutos = tempoMedioMinutos)
 }
