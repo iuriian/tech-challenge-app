@@ -8,7 +8,7 @@ APM da aplicação **oficina mecânica** com New Relic Java Agent (Docker / Kube
 | App local (Compose) | `oficina-mecanica-local` |
 | App staging (K8s) | `oficina-mecanica-staging` |
 | Dashboard (JSON) | [`newrelic/dashboard-oficina.json`](newrelic/dashboard-oficina.json) |
-| Custom event | `OrdemServicoEvent` — **pendente** até a controller de serviço migrar para o módulo `:api` |
+| Custom event | `OrdemServicoEvent` via [`OrdemServicoTelemetry`](../api/src/main/kotlin/br/com/fiap/oficina/api/observability/OrdemServicoTelemetry.kt) na controller de OS |
 | Logs JSON | `logback-spring.xml` + `RequestCorrelationFilter` (`X-Request-Id`, `trace.id`) |
 
 ## 1. Importar / atualizar o dashboard
@@ -30,7 +30,7 @@ docker compose --profile full up -d --build
 curl -s http://localhost:8090/actuator/health
 ```
 
-Para `OrdemServicoEvent`, use a collection Postman (criar OS, avançar status) com token Keycloak.
+Para `OrdemServicoEvent`, use a collection Postman (criar OS, avançar status) com token JWT.
 Eventos aparecem em **Query Your Data** em ~1 minuto:
 
 ```sql
@@ -100,8 +100,6 @@ docker compose logs app | tail -20
 
 ## 6. Próximas etapas
 
-1. Quando a **controller de Ordem de Serviço** for migrada para `:api`/`features`: reativar `OrdemServicoTelemetry` + hooks (criar/avançar/falha) + alerta NRQL.
+1. Criar alerta NRQL no portal (`OrdemServicoEvent` com `resultado = 'falha'`).
 2. Helm `nri-bundle` no GKE (CPU/memória).
 3. ADR de observabilidade + diagrama atualizado.
-
-> Na refatoração atual (`feature/EPIC-API-001`), cliente/funcionário/peça/veículo já estão nos módulos; **serviço (OS) ainda está no `src/` legado** e não entra no `:api:bootJar`.
