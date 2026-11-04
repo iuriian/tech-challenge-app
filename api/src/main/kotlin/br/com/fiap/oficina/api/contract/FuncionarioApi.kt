@@ -5,6 +5,7 @@ import br.com.fiap.oficina.funcionario.application.dto.FuncionarioResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.annotation.security.RolesAllowed
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -19,10 +20,12 @@ import org.springframework.web.bind.annotation.RequestMapping
 @RequestMapping("/api/v2/funcionarios")
 interface FuncionarioApi {
     @PostMapping
+    @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(summary = "Criar um novo funcionário", description = "Cadastra um novo funcionário no sistema")
     fun cadastrar(@Valid @RequestBody request: FuncionarioRequest): ResponseEntity<FuncionarioResponse>
 
     @GetMapping
+    @RolesAllowed("ATENDENTE", "MECANICO", "ADMIN")
     @Operation(
         summary = "Listar todos os funcionários",
         description = "Retorna uma lista com todos os funcionários cadastrados",
@@ -30,6 +33,7 @@ interface FuncionarioApi {
     fun listarTodos(): List<FuncionarioResponse>
 
     @GetMapping("/id/{id}")
+    @RolesAllowed("ATENDENTE", "MECANICO", "ADMIN")
     @Operation(
         summary = "Buscar funcionário por ID",
         description = "Busca um funcionário através do seu identificador único",
@@ -37,6 +41,7 @@ interface FuncionarioApi {
     fun buscarPorId(@PathVariable id: String): FuncionarioResponse
 
     @GetMapping("/nome/{nome}")
+    @RolesAllowed("ATENDENTE", "MECANICO", "ADMIN")
     @Operation(summary = "Buscar funcionário por nome", description = "Busca um funcionário através do seu nome")
     fun buscarPorNome(
         @Parameter(description = "Nome do funcionário", required = true, example = "Vini Jr.")
@@ -44,6 +49,7 @@ interface FuncionarioApi {
     ): FuncionarioResponse
 
     @PutMapping("/{id}")
+    @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(
         summary = "Alterar dados de um funcionário",
         description = "Atualiza as informações de um funcionário existente",
@@ -51,6 +57,7 @@ interface FuncionarioApi {
     fun alterar(@PathVariable id: String, @Valid @RequestBody request: FuncionarioRequest): FuncionarioResponse
 
     @DeleteMapping("/{id}")
+    @RolesAllowed("ATENDENTE", "ADMIN")
     @Operation(
         summary = "Deletar um funcionário",
         description = "Remove um funcionário do sistema através do seu identificador único",

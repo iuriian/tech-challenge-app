@@ -1,0 +1,45 @@
+flowchart LR
+    %% Arquitetura da solução — Tech Challenge (staging)
+    %% Setas cheias: caminho da requisição e da entrega.
+    %% Setas tracejadas: relações de suporte (pull da imagem, escala, segredos, token).
+    %% Renderizar:
+    %%   npx -y @mermaid-js/mermaid-cli -i docs/arquitetura.mmd -o docs/arquitetura.svg
+    %%   npx -y @mermaid-js/mermaid-cli -i docs/arquitetura.mmd -o docs/arquitetura.png -s 2
+    consumidor["Consumidor da API<br/>Postman · Swagger UI"]
+    ghcr["GHCR<br/>ghcr.io/iuriian/tech-challenge<br/>imagem referenciada por digest"]
+
+    subgraph gcp["Google Cloud Platform"]
+        direction TB
+
+        subgraph gke["Cluster GKE · tech-challenge-staging · zonal us-central1-a"]
+            direction TB
+            svc["Service LoadBalancer<br/>80 → 8080"]
+            app["Deployment app<br/>JRE 21 · Spring Boot 3.4<br/>requests 100m/384Mi · limits 1 CPU/1Gi<br/>Flyway aplica as migrations no boot"]
+            hpa["HPA app<br/>1 a 3 réplicas · alvo 70% de CPU"]
+            cm["ConfigMap app-config<br/>DB_HOST · DB_SSLMODE<br/>AUTH_ISSUER_URI · AUTH_AUDIENCE"]
+            sec["Secrets<br/>db-credentials · ghcr-creds"]
+        end
+
+        sql[("Cloud SQL · PostgreSQL 16<br/>base oficina · IP privado na VPC<br/>sslmode=require<br/>repo tech-challenge-database")]
+        auth["Emissor de tokens<br/>função serverless + API Gateway<br/>repo tech-challenge-auth"]
+        sm["Secret Manager<br/>tech-challenge-staging-db-password"]
+    end
+
+    consumidor -->|HTTPS| svc
+    svc --> app
+    app -->|"JDBC 5432"| sql
+    consumidor -.->|"POST /auth/.../token"| auth
+    app -.->|"JWKS: valida assinatura, iss e aud"| auth
+    auth -.->|"lê views cliente e funcionario"| sql
+    hpa -.->|escala| app
+    cm -.->|configuração| app
+    sec -.->|credenciais| app
+    sm -.->|senha do banco| sec
+    ghcr -.->|pull por digest| app
+
+    classDef externo fill:#eef2f7,stroke:#64748b,stroke-width:1px,color:#0f172a
+    classDef dados fill:#fef6e7,stroke:#b45309,stroke-width:1px,color:#0f172a
+    classDef carga fill:#eafaf1,stroke:#047857,stroke-width:1px,color:#0f172a
+    class consumidor,ghcr,auth externo
+    class sql,sm dados
+    class app,svc,hpa,cm,sec carga

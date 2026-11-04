@@ -70,6 +70,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("Dado uma negativa do method security, quando tratada, entao deve responder 403")
+    fun givenMethodSecurityDenial_whenHandled_thenRespond403() {
+        val resposta = handler.semPermissao(request(metodo = "DELETE", uri = "/api/v2/pecas/PEC001"))
+
+        assertEquals(HttpStatus.FORBIDDEN, resposta.statusCode)
+        assertEquals(403, resposta.body?.status)
+        assertEquals("Perfil sem permissão para a operação", resposta.body?.error)
+        assertTrue(resposta.body?.message?.contains("DELETE /api/v2/pecas/PEC001") == true)
+    }
+
+    @Test
     @DisplayName("Dado uma regra de negocio violada, quando tratada, entao deve responder 422")
     fun givenBusinessRuleViolation_whenHandled_thenRespond422() {
         val resposta = handler.regraDeNegocio(BusinessRuleException("Cargo inválido"), request(metodo = "POST"))

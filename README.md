@@ -37,11 +37,10 @@ Aqui o objeto de avaliação é *como essa aplicação chega e se mantém no ar*
 1. Containerizar a aplicação em uma imagem enxuta e reproduzível, publicada em registry.
 2. Orquestrar em Kubernetes com probes, limites de recurso, storage persistente,
    configuração e segredos fora da imagem, e escalonamento horizontal automático.
-3. Provisionar a infraestrutura como código com Terraform.
+3. Provisionar a infraestrutura como código com Terraform, em repositório separado.
 4. Automatizar a verificação (CI): formatação, análise estática, testes e cobertura mínima.
 5. Automatizar a entrega (CD): build, teste de fumaça da imagem, promoção e deploy.
 6. Manter o ambiente reproduzível localmente com os mesmos manifests do GKE.
-7. Observabilidade com **New Relic** (APM via Java Agent na imagem; ver [`docs/observabilidade.md`](docs/observabilidade.md)).
 
 Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-descrição-da-solução).
 
@@ -58,7 +57,7 @@ Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-
 | Componente | Tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST. Aplica as migrations do Flyway no boot |
-| **postgres** | PostgreSQL 16-alpine | Service `ClusterIP` 5432 | Base `oficina`, com PVC de 10Gi |
+| **Cloud SQL** | PostgreSQL 16 gerenciado · externo ao cluster | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
 
 Internamente a aplicação segue **Onion Architecture** — o domínio não conhece Spring,
 JPA nem HTTP:
@@ -67,10 +66,10 @@ JPA nem HTTP:
 
 ### Infraestrutura provisionada
 
-| Provisionado por Terraform | Aplicado pelo pipeline |
+| Provisionado por Terraform (repo [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s)) | Aplicado pelo pipeline (este repo) |
 |---|---|
-| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployments de `app` e `postgres` |
-| Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Services, PVC de 10Gi e HPA de 1 a 3 réplicas |
+| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployment de `app` (o banco é externo) |
+| Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Service `LoadBalancer` e HPA de 1 a 3 réplicas |
 | Secret Manager com a senha do banco | ConfigMaps e Secrets do namespace |
 | Service account `github-actions-cd` e papéis IAM | Namespace e ordem de aplicação (`k8s/deploy.sh`) |
 
@@ -82,11 +81,14 @@ flowchart LR
     B --> C["smoke test<br/>app + PostgreSQL"]
     C --> D["promote<br/>tag no digest testado"]
     D --> E["deploy-staging<br/>k8s/deploy.sh"]
-    E --> F(["URL publicada"])
+    E --> F(["Staging no ar"])
+    F -->|"merge em main + tag vX.Y.Z"| G["CD - Production<br/>promove o digest validado"]
+    G --> H(["Produção no ar"])
 ```
 
 A imagem é referenciada por **digest** desde o primeiro passo e a tag legível só é
 aplicada depois do smoke test: o que foi testado é exatamente o que sobe no cluster.
+Produção não rebuilda — promove o mesmo digest que passou por homologação.
 
 ---
 
@@ -108,14 +110,10 @@ docker compose up -d db
 **Stack completa em containers**
 
 ```bash
-# New Relic APM (opcional): copie .env.example → .env e preencha NEW_RELIC_LICENSE_KEY
-docker compose --profile full up -d --build
+docker compose --profile full up -d
 docker compose logs -f app
 docker compose down
 ```
-
-Com a license key no `.env`, a app aparece em APM como `oficina-mecanica-local`
-(ou o valor de `NEW_RELIC_APP_NAME`). O `./gradlew bootRun` **não** carrega o agent.
 
 **Kubernetes local com kind** *(valida os mesmos manifests do GKE)*
 
@@ -150,11 +148,20 @@ Passo a passo completo, incluindo o Nginx e o arquivo `hosts`:
 
 ## Deploy em Kubernetes
 
-**Pelo pipeline** — um push em `release/*` dispara build, smoke test, promoção e deploy:
+**Para staging** — um push em `release/*` dispara build, smoke test, promoção e deploy:
 
 ```bash
 git checkout -b release/1.1.0
 git push -u origin release/1.1.0
+```
+
+**Para produção** — validado o staging, o merge em `main` e a tag disparam a
+promoção do digest já testado:
+
+```bash
+git checkout main && git pull
+git tag -a v1.1.0 -m "Release 1.1.0"
+git push origin v1.1.0
 ```
 
 **Manualmente**, com `kubectl` autenticado no cluster:
@@ -182,29 +189,32 @@ Secrets, ordem de aplicação e diagnóstico de falhas:
 
 ---
 
-## Provisionamento da infraestrutura com Terraform
+## Infraestrutura
 
-```bash
-gcloud auth application-default login
+O Terraform não fica neste repositório. A VPC, o cluster GKE, os segredos do Secret
+Manager e a service account do CI são provisionados por
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+com pipeline próprio (`plan` no Pull Request, `apply` no merge para a main) e state
+remoto em bucket GCS. A instância do Cloud SQL vem de
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database).
 
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init
-terraform apply                                # 5 a 10 minutos
+Este repositório **consome** essa infraestrutura: o `cd-staging.yml` autentica com a
+chave da service account, resolve o IP privado do Cloud SQL e lê a senha do banco no
+Secret Manager em tempo de deploy. Tudo que atravessa a fronteira entre os dois são
+três valores de identificação e uma credencial, cadastrados no Environment:
 
-terraform output github_environment_variables  # valores para o Environment do GitHub
-eval "$(terraform output -raw get_credentials_command)"
-kubectl get nodes
-```
+Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY`,
+`GHCR_PAT`, `GCP_PROJECT_ID`, `GKE_CLUSTER` e `GKE_ZONE`, e a variable
+`AUTH_ISSUER_URI`. O environment `production` pede os mesmos, apontando para o
+ambiente de produção, mais os *required reviewers* que seguram o deploy para
+aprovação. Detalhes em [docs/cd.md](docs/cd.md#8-configuração-necessária-no-github).
 
-Configure em Settings → Environments → `staging`: os secrets `GCP_SA_KEY` e
-`GHCR_PAT`, e as variables `GCP_PROJECT_ID`, `GKE_CLUSTER` e `GKE_ZONE`.
+Os três primeiros saem prontos de `terraform output github_environment_variables`,
+rodado no repositório de infra. Trocar o nome ou a zona do cluster exige atualizar os
+secrets aqui: este pipeline só conhece o cluster pelo Environment.
 
-Para destruir o ambiente: `terraform destroy`. **Nunca versione o `.tfstate`** — ele
-grava valores sensíveis em texto puro.
-
-Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provisionamento-da-infraestrutura-com-terraform)
-· [terraform/README.md](terraform/README.md).
+Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-infraestrutura-provisionada-fora-deste-repositório)
+· [README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -213,7 +223,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | Camada | Stack |
 |---|---|
 | Backend | Kotlin 2.3 · Java 21 · Spring Boot 3.4 · Spring MVC · Spring Data JPA · Spring Security |
-| Banco | PostgreSQL 16 · Flyway (12 migrations) |
+| Banco | PostgreSQL 16 · Flyway (17 migrations) |
 | Autenticação | OAuth2 Resource Server · JWT · JWKS |
 | Documentação | SpringDoc OpenAPI 2.8.5 · Swagger UI |
 | Qualidade | JUnit 5 · Testcontainers · JaCoCo · Detekt · Spotless/ktlint |
@@ -235,7 +245,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | [docs/cd.md](docs/cd.md) | Pipeline de entrega, rollback e troubleshooting |
 | [docs/adr-001.md](docs/adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway |
 | [docs/linguagem-ubiqua.md](docs/linguagem-ubiqua.md) | Glossário do domínio |
-| [k8s/README.md](k8s/README.md) · [kind/README.md](kind/README.md) · [terraform/README.md](terraform/README.md) | Manifests, ambiente local e infraestrutura |
+| [k8s/README.md](k8s/README.md) · [kind/README.md](kind/README.md) · [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Manifests, ambiente local e infraestrutura (repo separado) |
 
 ---
 

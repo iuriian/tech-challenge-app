@@ -2,11 +2,88 @@
   "info": {
     "_postman_id": "bf614743-532e-48e3-b800-0176dfd40e69",
     "name": "TechChallenge API - Test Payloads",
-    "description": "Collection com payloads realistas para teste. Ordem sugerida: 1) Criar Funcionário → 2) Criar Cliente → 3) Criar Peça → 4) Criar Veículo → 5) Criar Serviço → 6) Fluxo de status. Os scripts de teste salvam os IDs automaticamente como variáveis de coleção.",
+    "description": "Collection com payloads realistas para teste da TechChallenge API (oficina mecânica).\n\nOrdem sugerida: 1) `01 - funcionarios` -> 2) `02 - clientes` -> 3) `03 - pecas` -> 4) `04 - veiculos` -> 5) `05 - catalogo de servicos` -> 6) `06 - ordens de servico` -> 7) `07 - fluxo de status`. Os scripts de teste salvam os ids automaticamente como variáveis de coleção (`funcionarioId`, `clienteId`, `pecaId`, `pecaCodigo`, `veiculoId`, `servicoCatalogoId`, `servicoId`).\n\n**Autenticação.** Bearer JWT de um emissor externo (repositório `tech-challenge-auth`), configurado na aplicação por `AUTH_ISSUER_URI`. Rode `00 - autenticacao > Obter token no emissor`: ele faz o `POST {{authIssuerUri}}/auth/token` com `{\"cpf\": \"{{authCpf}}\"}` e salva o `access_token` na variável `accessToken` (válido por 1 hora). O papel vem do cadastro do CPF — a descrição da pasta `00` traz os CPFs de seed e explica por que nenhum deles produz `ADMIN` hoje, o que faz as escritas de `/pecas` e de `/catalogo/servicos` responderem `403`. A aplicação apenas valida assinatura, `iss` e `aud`; o perfil que vem no claim `roles` precisa constar do `@RolesAllowed` da operação, senão a resposta é `403` em vez de `401`.\n\n**Detalhes dos payloads que mais geram erro:**\n\n- `cargo` do funcionário é a descrição do enum `Cargo`: `Atendente` ou `Mecânico` (com acento). `MECANICO` devolve `400`.\n- `cpf` do funcionário e `numeroDocumento` do cliente são validados por dígito verificador.\n- `tipoPessoa`: `PESSOA_FISICA` | `PESSOA_JURIDICA`.\n- `codigo` da peça aceita de 3 a 15 caracteres.\n- O corpo do veículo usa `proprietarioId` (id do cliente); só o path da busca usa `motorista`.\n- `PUT /pecas/{codigo}` resolve a peça por **UUID**; os demais endpoints de peça usam o código.\n- Ordens de serviço usam `itens` com `tipo` (`SERVICO` | `PECA`) e `referenciaId` = UUID do serviço do catálogo ou da peça.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1956193"
   },
   "item": [
+    {
+      "name": "00 - autenticacao",
+      "item": [
+        {
+          "name": "Obter token no emissor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token emitido', () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', body.access_token);",
+                  "    console.log('[auth] accessToken salvo (expira em ' + body.expires_in + 's)');",
+                  "",
+                  "    // Imprime o papel do token: e a causa mais comum de 403 nas escritas.",
+                  "    try {",
+                  "        const claims = JSON.parse(atob(body.access_token.split('.')[1]));",
+                  "        console.log('[auth] iss=' + claims.iss +",
+                  "            ' | aud=' + JSON.stringify(claims.aud) +",
+                  "            ' | roles=' + JSON.stringify(claims.roles));",
+                  "    } catch (e) {",
+                  "        console.log('[auth] nao foi possivel decodificar o token.');",
+                  "    }",
+                  "} else {",
+                  "    console.error('[auth] emissor respondeu ' + pm.response.code + ': ' + pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{authCpf}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authIssuerUri}}/auth/token",
+              "host": [
+                "{{authIssuerUri}}"
+              ],
+              "path": [
+                "auth",
+                "token"
+              ]
+            },
+            "description": "Único endpoint do emissor. Troque `authCpf` para obter outro papel — a tabela de CPFs está na descrição da pasta.\n\nRode este request antes de qualquer outro: ele preenche `accessToken`, que é o que a auth da collection envia. O token vale 1 hora (`expires_in: 3600`)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Token no emissor externo e endpoints públicos da aplicação.\n\nO emissor é o serviço `tech-challenge-auth` (local em `http://localhost:8081`; Cloud Run atrás do API Gateway nos ambientes remotos). O contrato é **um único** `POST /auth/token` com `{\"cpf\": \"...\"}` — não há senha, o CPF é o único fator e é aceito com ou sem máscara. A resposta é `{\"access_token\", \"token_type\": \"Bearer\", \"expires_in\": 3600}`, e o script do request salva o `access_token` em `accessToken`.\n\nO papel não é escolhido por quem chama: vem de onde o CPF está cadastrado. O emissor lê as views `cliente` e `funcionario` publicadas pela migration `V16` da aplicação e consulta `cliente` primeiro, então um CPF presente nas duas recebe `CLIENTE`.\n\n| CPF | Cadastro (seed) | `roles` |\n|---|---|---|\n| `527.044.726-61` | Carlos Pereira, cliente | `[\"CLIENTE\"]` |\n| `529.982.247-25` | João Silva, funcionário | `[\"ATENDENTE\"]` |\n| `286.255.878-87` | Maria Souza, funcionário | `[\"MECANICO\"]` |\n| `453.178.287-91` | Carlos Lima, funcionário | `[\"ATENDENTE\"]` |\n\n**Não existe token `ADMIN` hoje.** A tabela `funcionarios` tem `CHECK (cargo IN ('ATENDENTE', 'MECANICO'))` e o enum `Cargo` conhece só esses dois; o emissor já traduz `ADMIN`, mas nenhum cadastro pode receber esse cargo. Por isso as operações `@RolesAllowed(\"ADMIN\")` — `POST`/`PUT`/`DELETE` de `/pecas`, `reativar` e toda a escrita de `/catalogo/servicos` — respondem `403` até a constraint e o enum serem ampliados na aplicação.\n\nErros do emissor seguem o formato OAuth 2.0: `400 invalid_request` (CPF inválido), `401 invalid_grant` (sem cadastro apto) e `503 temporarily_unavailable` (banco desligado — o Cloud SQL é desligado fora de uso por custo).\n\nOs paths `/actuator/health/**`, `/actuator/info`, `/swagger-ui/**` e `/v3/api-docs/**` são liberados no `SecurityConfig`, por isso os requests desta pasta usam `No Auth`."
+    },
     {
       "name": "01 - funcionarios",
       "item": [
@@ -46,7 +123,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Carlos Eduardo Mecânico\",\n  \"cargo\": \"MECANICO\"\n}",
+              "raw": "{\n  \"nome\": \"Carlos Eduardo Mecânico\",\n  \"cargo\": \"Mecânico\",\n  \"cpf\": \"14725836982\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -54,14 +131,17 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/funcionarios",
+              "raw": "{{baseUrl}}/api/v2/funcionarios",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios"
               ]
-            }
+            },
+            "description": "`cargo` é a **descrição** do enum `Cargo` (`Cargo.fromDescricao`): `Atendente` ou `Mecânico`, com acento. `MECANICO` devolve `400`.\n\n`cpf` é obrigatório e validado por dígito verificador; CPF repetido devolve `409`."
           },
           "response": []
         },
@@ -76,11 +156,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios",
+              "raw": "{{baseUrl}}/api/v2/funcionarios",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios"
               ]
             }
@@ -98,11 +180,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/id/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/id/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "id",
                 "{{funcionarioId}}"
@@ -122,11 +206,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/nome/Carlos Eduardo Mecânico",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/nome/Carlos Eduardo Mecânico",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "nome",
                 "Carlos Eduardo Mecânico"
@@ -151,7 +237,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{funcionarioId}}\",\n  \"nome\": \"Carlos Eduardo Mecânico\",\n  \"cargo\": \"Mecânico Pleno\"\n}",
+              "raw": "{\n  \"nome\": \"Carlos Eduardo Mecânico Sênior\",\n  \"cargo\": \"Mecânico\",\n  \"cpf\": \"14725836982\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -159,11 +245,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "{{funcionarioId}}"
               ]
@@ -177,11 +265,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "{{funcionarioId}}"
               ]
@@ -238,11 +328,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -273,11 +365,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -295,11 +389,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -317,11 +413,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
@@ -340,11 +438,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/nome/João da Silva Santos",
+              "raw": "{{baseUrl}}/api/v2/clientes/nome/João da Silva Santos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "nome",
                 "João da Silva Santos"
@@ -364,14 +464,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/documento/12345678901",
+              "raw": "{{baseUrl}}/api/v2/clientes/documento/32958990109",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "documento",
-                "12345678901"
+                "32958990109"
               ]
             }
           },
@@ -388,11 +490,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/documento/12345678000195",
+              "raw": "{{baseUrl}}/api/v2/clientes/documento/12345678000195",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "documento",
                 "12345678000195"
@@ -417,7 +521,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{clienteId}}\",\n  \"nome\": \"João da Silva Santos\",\n  \"email\": \"joao.santos.novo@email.com.br\",\n  \"numeroDocumento\": \"12345678901\",\n  \"tipoPessoa\": \"FISICA\",\n  \"endereco\": {\n    \"logradouro\": \"Rua das Acácias\",\n    \"numero\": \"456\",\n    \"complemento\": \"Casa\",\n    \"bairro\": \"Vila Nova\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\",\n    \"cep\": \"02040010\"\n  },\n  \"contatos\": [\n    {\n      \"nome\": \"João da Silva Santos\",\n      \"telefone\": \"11987654321\",\n      \"tipo\": \"CELULAR\"\n    }\n  ]\n}",
+              "raw": "{\n  \"nome\": \"João da Silva Santos\",\n  \"email\": \"joao.santos.novo@email.com.br\",\n  \"numeroDocumento\": \"32958990109\",\n  \"tipoPessoa\": \"PESSOA_FISICA\",\n  \"endereco\": {\n    \"logradouro\": \"Rua das Acácias\",\n    \"numero\": \"456\",\n    \"complemento\": \"Casa\",\n    \"bairro\": \"Vila Nova\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\",\n    \"cep\": \"02040010\"\n  },\n  \"contatos\": [\n    {\n      \"nome\": \"João da Silva Santos\",\n      \"telefone\": \"11987654321\",\n      \"tipo\": \"CELULAR\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -425,15 +529,18 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
-            }
+            },
+            "description": "`tipoPessoa` aceita `PESSOA_FISICA` ou `PESSOA_JURIDICA` (`TipoPessoa.valueOf`) e o `numeroDocumento` precisa continuar coerente com o tipo: o documento é revalidado por dígito verificador a cada alteração."
           },
           "response": []
         },
@@ -443,11 +550,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
@@ -500,7 +609,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo\": \"FILTRO\",\n  \"nome\": \"Filtro de Óleo\",\n  \"descricao\": \"Filtro de óleo para motores 1.0 a 2.0 — compatível com Fiat, VW, GM\",\n  \"fabricante\": \"Mann-Filter\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 15.90,\n  \"precoDeVenda\": 39.90,\n  \"qtdEstoque\": 50,\n  \"ativo\": true\n}",
+              "raw": "{\n  \"codigo\": \"FILTRO-001\",\n  \"nome\": \"Filtro de Óleo\",\n  \"descricao\": \"Filtro de óleo para motores 1.0 a 2.0 — compatível com Fiat, VW, GM\",\n  \"fabricante\": \"Mann-Filter\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 15.9,\n  \"precoDeVenda\": 39.9,\n  \"qtdEstoque\": 50\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -508,14 +617,17 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
-            }
+            },
+            "description": "`codigo` tem entre 3 e 15 caracteres (`@Size(min = 3, max = 15)`). O campo `ativo` não existe no `PecaRequest`: a peça nasce ativa e muda de estado por `DELETE` e `reativar`."
           },
           "response": []
         },
@@ -535,7 +647,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo\": \"PASTILHA-FREIO-002\",\n  \"nome\": \"Pastilha de Freio Dianteira\",\n  \"descricao\": \"Pastilha de freio dianteira para veículos de passeio — kit com 4 peças\",\n  \"fabricante\": \"Fras-le\",\n  \"fornecedor\": \"Distribuidora de Freios SP\",\n  \"precoDeCompra\": 45.00,\n  \"precoDeVenda\": 120.00,\n  \"qtdEstoque\": 30,\n  \"ativo\": true\n}",
+              "raw": "{\n  \"codigo\": \"PAST-002\",\n  \"nome\": \"Pastilha de Freio Dianteira\",\n  \"descricao\": \"Pastilha de freio dianteira para veículos de passeio — kit com 4 peças\",\n  \"fabricante\": \"Fras-le\",\n  \"fornecedor\": \"Distribuidora de Freios SP\",\n  \"precoDeCompra\": 45,\n  \"precoDeVenda\": 120,\n  \"qtdEstoque\": 30\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -543,11 +655,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -570,7 +684,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo\": \"VELA\",\n  \"nome\": \"Vela de Ignição\",\n  \"descricao\": \"Vela de ignição de iridium — alta durabilidade, pack com 4 unidades\",\n  \"fabricante\": \"NGK\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 22.50,\n  \"precoDeVenda\": 65.00,\n  \"qtdEstoque\": 40,\n  \"ativo\": true\n}",
+              "raw": "{\n  \"codigo\": \"VELA-003\",\n  \"nome\": \"Vela de Ignição\",\n  \"descricao\": \"Vela de ignição de iridium — alta durabilidade, pack com 4 unidades\",\n  \"fabricante\": \"NGK\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 22.5,\n  \"precoDeVenda\": 65,\n  \"qtdEstoque\": 40\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -578,11 +692,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -600,11 +716,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -622,38 +740,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/codigo/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/codigo/{{pecaCodigo}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "codigo",
                 "{{pecaCodigo}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Buscar peça por nome",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/pecas/nome/Filtro de Óleo",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "pecas",
-                "nome",
-                "Filtro de Óleo"
               ]
             }
           },
@@ -675,7 +771,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Filtro de Óleo Premium\",\n  \"descricao\": \"Filtro de óleo premium para motores 1.0 a 2.0 — compatível com Fiat, VW, GM, Renault\",\n  \"fabricante\": \"Mann-Filter\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 18.00,\n  \"precoDeVenda\": 45.00\n}",
+              "raw": "{\n  \"codigo\": \"FILTRO-001\",\n  \"nome\": \"Filtro de Óleo Premium\",\n  \"descricao\": \"Filtro de óleo premium para motores 1.0 a 2.0 — compatível com Fiat, VW, GM, Renault\",\n  \"fabricante\": \"Mann-Filter\",\n  \"fornecedor\": \"AutoPeças Brasil Ltda\",\n  \"precoDeCompra\": 18,\n  \"precoDeVenda\": 45,\n  \"qtdEstoque\": 50\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -683,15 +779,18 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
-                "{{pecaCodigo}}"
+                "{{pecaId}}"
               ]
-            }
+            },
+            "description": "Diferente dos demais endpoints de peça, `PUT /pecas/{codigo}` resolve a peça por **UUID** (`AtualizarPecaUseCase` chama `PecaId.toUUID`) — por isso o path usa `{{pecaId}}`. Enviar o código devolve `400`.\n\n`DELETE`, `reativar` e os endpoints de estoque continuam usando o **código**."
           },
           "response": []
         },
@@ -706,11 +805,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/estoque/repor?qtd=10",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/estoque/repor?qtd=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "estoque",
@@ -738,11 +839,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/estoque/retirar?qtd=5",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/estoque/retirar?qtd=5",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "estoque",
@@ -770,11 +873,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}"
               ]
@@ -793,11 +898,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/reativar",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/reativar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "reativar"
@@ -845,7 +952,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Onix Plus\",\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Onix Plus 1.0 Turbo Premier\",\n  \"ano\": \"2022\",\n  \"placa\": \"ABC1D23\",\n  \"motoristaId\": \"{{clienteId}}\"\n}",
+              "raw": "{\n  \"nome\": \"Onix Plus\",\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Onix Plus 1.0 Turbo Premier\",\n  \"ano\": \"2022\",\n  \"placa\": \"ABC1D23\",\n  \"proprietarioId\": \"{{clienteId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -853,14 +960,17 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
-            }
+            },
+            "description": "O corpo usa **`proprietarioId`** — o id do cliente dono do veículo. Só o path da busca fala em motorista (`GET /veiculos/motorista/{motoristaId}`), e ele recebe esse mesmo id.\n\n`placa` aceita o formato antigo (`ABC1234`) ou Mercosul (`ABC1D23`); `nome` tem de 3 a 20 caracteres e `marca` de 2 a 20."
           },
           "response": []
         },
@@ -880,7 +990,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"HB20 Sedan\",\n  \"marca\": \"Hyundai\",\n  \"modelo\": \"HB20S 1.6 Comfort Plus\",\n  \"ano\": \"2021\",\n  \"placa\": \"XYZ9K87\",\n  \"motoristaId\": \"{{clienteId}}\"\n}",
+              "raw": "{\n  \"nome\": \"HB20 Sedan\",\n  \"marca\": \"Hyundai\",\n  \"modelo\": \"HB20S 1.6 Comfort Plus\",\n  \"ano\": \"2021\",\n  \"placa\": \"XYZ9K87\",\n  \"proprietarioId\": \"{{clienteId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -888,11 +998,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
             }
@@ -910,11 +1022,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
             }
@@ -932,11 +1046,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -955,11 +1071,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/placa/ABC1D23",
+              "raw": "{{baseUrl}}/api/v2/veiculos/placa/ABC1D23",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "placa",
                 "ABC1D23"
@@ -979,11 +1097,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/motorista/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/motorista/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "motorista",
                 "{{clienteId}}"
@@ -1008,7 +1128,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{veiculoId}}\",\n  \"nome\": \"Onix Plus (atualizado)\",\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Onix Plus 1.0 Turbo Premier\",\n  \"ano\": \"2023\",\n  \"placa\": \"ABC1D23\",\n  \"motoristaId\": \"{{clienteId}}\"\n}",
+              "raw": "{\n  \"nome\": \"Onix Plus (atualizado)\",\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Onix Plus 1.0 Turbo Premier\",\n  \"ano\": \"2023\",\n  \"placa\": \"ABC1D23\",\n  \"proprietarioId\": \"{{clienteId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1016,11 +1136,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -1034,11 +1156,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -1049,10 +1173,284 @@
       ]
     },
     {
-      "name": "05 - servicos (criação e consulta)",
+      "name": "05 - catalogo de servicos",
       "item": [
         {
-          "name": "Criar serviço (OS)",
+          "name": "Criar serviço do catálogo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    if (body.id) {",
+                  "        pm.collectionVariables.set('servicoCatalogoId', body.id);",
+                  "        console.log('servicoCatalogoId salvo: ' + body.id);",
+                  "    }",
+                  "    pm.test('Serviço do catálogo criado com sucesso', () => pm.response.to.have.status([200, 201]));",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Troca de óleo e filtro\",\n  \"valor\": 180\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos"
+              ]
+            },
+            "description": "`descricao` tem no máximo 100 caracteres e `valor` precisa ser >= 0.00. Exige o perfil `ADMIN`.\n\nO `id` devolvido aqui é o `referenciaId` dos itens de orçamento do tipo `SERVICO`."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar serviço - Alinhamento e balanceamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Alinhamento e balanceamento\",\n  \"valor\": 150\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar serviços ativos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar todos os serviços (inclui inativos)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos/todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos",
+                "todos"
+              ]
+            },
+            "description": "Visão administrativa do catálogo: traz ativos e inativos. Exige `ADMIN`."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar serviço por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos/{{servicoCatalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos",
+                "{{servicoCatalogoId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar serviço",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Troca de óleo, filtro de óleo e filtro de ar\",\n  \"valor\": 215\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos/{{servicoCatalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos",
+                "{{servicoCatalogoId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Desativar serviço",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos/{{servicoCatalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos",
+                "{{servicoCatalogoId}}"
+              ]
+            },
+            "description": "Desativação lógica. Um serviço inativo não pode ser usado em novos orçamentos."
+          },
+          "response": []
+        },
+        {
+          "name": "Reativar serviço",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/catalogo/servicos/{{servicoCatalogoId}}/reativar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "catalogo",
+                "servicos",
+                "{{servicoCatalogoId}}",
+                "reativar"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Catálogo de serviços oferecidos pela oficina (`/api/v2/catalogo/servicos`).\n\nNão confundir com `/api/v2/servicos`, que são as **ordens de serviço**. Toda a escrita deste catálogo exige o perfil `ADMIN`."
+    },
+    {
+      "name": "06 - ordens de servico (criação e consulta)",
+      "item": [
+        {
+          "name": "Criar ordem de serviço",
           "event": [
             {
               "listen": "test",
@@ -1087,7 +1485,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"descricao\": \"Revisão geral: troca de óleo, filtros e verificação de freios\",\n  \"clienteId\": \"{{clienteId}}\",\n  \"funcionarioId\": \"{{funcionarioId}}\",\n  \"veiculoId\": \"{{veiculoId}}\",\n  \"pecas\": [\n    {\n      \"pecaId\": \"{{pecaId}}\",\n      \"quantidade\": 1\n    }\n  ]\n}",
+              "raw": "{\n  \"descricao\": \"Revisão geral: troca de óleo, filtros e verificação de freios\",\n  \"clienteId\": \"{{clienteId}}\",\n  \"funcionarioId\": \"{{funcionarioId}}\",\n  \"veiculoId\": \"{{veiculoId}}\",\n  \"itens\": [\n    {\n      \"tipo\": \"SERVICO\",\n      \"referenciaId\": \"{{servicoCatalogoId}}\",\n      \"quantidade\": 1\n    },\n    {\n      \"tipo\": \"PECA\",\n      \"referenciaId\": \"{{pecaId}}\",\n      \"quantidade\": 2\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1095,19 +1493,22 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos",
+              "raw": "{{baseUrl}}/api/v2/servicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos"
               ]
-            }
+            },
+            "description": "Os itens do orçamento usam `tipo` (`SERVICO` | `PECA`) e `referenciaId`, que é o **id (UUID)** do serviço do catálogo ou da peça — não o código da peça.\n\nPré-requisitos: rodar antes as pastas 01, 02, 03, 04 e 05."
           },
           "response": []
         },
         {
-          "name": "Listar todos os serviços",
+          "name": "Listar todas as ordens",
           "request": {
             "method": "GET",
             "header": [
@@ -1117,11 +1518,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos",
+              "raw": "{{baseUrl}}/api/v2/servicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos"
               ]
             }
@@ -1129,7 +1532,7 @@
           "response": []
         },
         {
-          "name": "Buscar serviço por ID",
+          "name": "Buscar ordem por ID",
           "request": {
             "method": "GET",
             "header": [
@@ -1139,11 +1542,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1152,7 +1557,7 @@
           "response": []
         },
         {
-          "name": "Listar serviços por cliente",
+          "name": "Listar ordens por cliente",
           "request": {
             "method": "GET",
             "header": [
@@ -1162,11 +1567,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/cliente/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/cliente/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "cliente",
                 "{{clienteId}}"
@@ -1176,7 +1583,7 @@
           "response": []
         },
         {
-          "name": "Obter orçamento do serviço",
+          "name": "Obter orçamento da ordem",
           "request": {
             "method": "GET",
             "header": [
@@ -1186,11 +1593,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/orcamento",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/orcamento",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "orcamento"
@@ -1210,11 +1619,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/metricas/tempo-medio",
+              "raw": "{{baseUrl}}/api/v2/servicos/metricas/tempo-medio",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "metricas",
                 "tempo-medio"
@@ -1224,7 +1635,7 @@
           "response": []
         },
         {
-          "name": "Atualizar serviço",
+          "name": "Atualizar ordem de serviço",
           "request": {
             "method": "PUT",
             "header": [
@@ -1239,7 +1650,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{servicoId}}\",\n  \"descricao\": \"Revisão geral: troca de óleo, filtros, verificação de freios e alinhamento\",\n  \"clienteId\": \"{{clienteId}}\",\n  \"funcionarioId\": \"{{funcionarioId}}\",\n  \"veiculoId\": \"{{veiculoId}}\",\n  \"pecas\": [\n    {\n      \"pecaId\": \"{{pecaId}}\",\n      \"quantidade\": 1\n    }\n  ]\n}",
+              "raw": "{\n  \"descricao\": \"Revisão geral + alinhamento (escopo ampliado pelo cliente)\",\n  \"clienteId\": \"{{clienteId}}\",\n  \"funcionarioId\": \"{{funcionarioId}}\",\n  \"veiculoId\": \"{{veiculoId}}\",\n  \"itens\": [\n    {\n      \"tipo\": \"SERVICO\",\n      \"referenciaId\": \"{{servicoCatalogoId}}\",\n      \"quantidade\": 1\n    },\n    {\n      \"tipo\": \"PECA\",\n      \"referenciaId\": \"{{pecaId}}\",\n      \"quantidade\": 4\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1247,11 +1658,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1260,16 +1673,18 @@
           "response": []
         },
         {
-          "name": "Deletar serviço",
+          "name": "Deletar ordem de serviço",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1277,10 +1692,11 @@
           },
           "response": []
         }
-      ]
+      ],
+      "description": "Ordens de serviço (`/api/v2/servicos`). Ordem sugerida de execução da collection:\n\n1. `01 - funcionarios`\n2. `02 - clientes`\n3. `03 - pecas`\n4. `04 - veiculos`\n5. `05 - catalogo de servicos`\n6. `06 - ordens de servico`\n7. `07 - fluxo de status`\n\nOs scripts de teste salvam os ids em variáveis de coleção conforme a collection roda."
     },
     {
-      "name": "06 - servicos (fluxo de status)",
+      "name": "07 - ordens de servico (fluxo de status)",
       "item": [
         {
           "name": "1. Avançar status (RECEBIDA → EM_DIAGNOSTICO)",
@@ -1293,11 +1709,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
@@ -1318,11 +1736,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
@@ -1355,17 +1775,19 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
               ]
             },
-            "description": "Apenas clientes autenticados podem aprovar. Transição AGUARDANDO_APROVACAO → EM_EXECUCAO."
+            "description": "Transição AGUARDANDO_APROVACAO -> EM_EXECUCAO (aprovação do orçamento). O endpoint aceita os perfis ATENDENTE, ADMIN e CLIENTE."
           },
           "response": []
         },
@@ -1393,17 +1815,19 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
               ]
             },
-            "description": "Apenas clientes autenticados podem recusar. Transição AGUARDANDO_APROVACAO → CANCELADA."
+            "description": "Caminho alternativo: AGUARDANDO_APROVACAO -> CANCELADA. Não rode junto com o 3a na mesma ordem de serviço."
           },
           "response": []
         },
@@ -1418,17 +1842,46 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
               ]
             },
-            "description": "Move EM_EXECUCAO → FINALIZADA. Retorna 422 se já estiver em estado final."
+            "description": "Move EM_EXECUCAO -> FINALIZADA."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Avançar status (FINALIZADA → ENTREGUE)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "servicos",
+                "{{servicoId}}",
+                "avancar"
+              ]
+            },
+            "description": "Último avanço da sequência: FINALIZADA -> ENTREGUE. A partir de ENTREGUE não há próximo status, e um novo `avancar` devolve `422`."
           },
           "response": []
         },
@@ -1456,11 +1909,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1493,11 +1948,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1530,11 +1987,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1544,40 +2003,15 @@
           "response": []
         }
       ],
-      "description": "Máquina de estados da OS:\nRECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA\n                                                  ↘ CANCELADA\n\nRegra: clientes só podem aprovar (EM_EXECUCAO) ou recusar (CANCELADA) a partir de AGUARDANDO_APROVACAO."
+      "description": "Máquina de estados da OS:\n\n`RECEBIDA -> EM_DIAGNOSTICO -> AGUARDANDO_APROVACAO -> EM_EXECUCAO -> FINALIZADA -> ENTREGUE`\n\nDe `AGUARDANDO_APROVACAO` também é possível ir para `CANCELADA` (recusa do cliente), e `ENTREGUE` e `CANCELADA` são estados finais.\n\n- `PATCH /servicos/{id}/avancar` move para o próximo status da sequência.\n- `PATCH /servicos/{id}/status` move para um status específico, validando a transição."
     }
   ],
   "auth": {
-    "type": "oauth2",
-    "oauth2": [
+    "type": "bearer",
+    "bearer": [
       {
-        "key": "scope",
-        "value": "openid profile",
-        "type": "string"
-      },
-      {
-        "key": "accessTokenUrl",
-        "value": "{{keycloakUrl}}/realms/Fiap/protocol/openid-connect/token",
-        "type": "string"
-      },
-      {
-        "key": "grant_type",
-        "value": "password_credentials",
-        "type": "string"
-      },
-      {
-        "key": "username",
-        "value": "{{username}}",
-        "type": "string"
-      },
-      {
-        "key": "password",
-        "value": "{{password}}",
-        "type": "string"
-      },
-      {
-        "key": "clientId",
-        "value": "{{clientId}}",
+        "key": "token",
+        "value": "{{accessToken}}",
         "type": "string"
       }
     ]
@@ -1590,7 +2024,29 @@
         "packages": {},
         "requests": {},
         "exec": [
-          ""
+          "// ---------------------------------------------------------------------------",
+          "// A collection autentica com Bearer {{accessToken}}.",
+          "//",
+          "// O token vem de um emissor externo (repositorio tech-challenge-auth); nao ha",
+          "// fluxo de obtencao automatica aqui. Preencha a variavel accessToken antes de",
+          "// rodar - principalmente numa campanha de carga, onde a falta dela viraria",
+          "// centenas de 401 silenciosos em vez de um erro claro.",
+          "//",
+          "// Os endpoints liberados no SecurityConfig (/actuator/health/**, /actuator/info,",
+          "// /swagger-ui/**, /v3/api-docs/**) e qualquer request marcado como 'No Auth'",
+          "// rodam sem token: barrar esses aqui tornaria as probes inutilizaveis.",
+          "// ---------------------------------------------------------------------------",
+          "const url = String(pm.request.url);",
+          "const publico = /\\/(actuator|v3\\/api-docs|swagger-ui)/.test(url);",
+          "const semAuth = Boolean(pm.request.auth) && pm.request.auth.type === 'noauth';",
+          "",
+          "if (!publico && !semAuth && !pm.collectionVariables.get('accessToken')) {",
+          "    throw new Error(",
+          "        'accessToken vazio. Obtenha um bearer em ' +",
+          "        pm.collectionVariables.get('authIssuerUri') + '/auth/token ' +",
+          "        'e preencha a variavel accessToken da collection.'",
+          "    );",
+          "}"
         ]
       }
     },
@@ -1612,20 +2068,19 @@
       "value": "http://127.0.0.1:8080"
     },
     {
-      "key": "keycloakUrl",
-      "value": "http://localhost:8081"
+      "key": "authIssuerUri",
+      "value": "http://localhost:8081",
+      "type": "string"
     },
     {
-      "key": "username",
-      "value": "admin"
+      "key": "authCpf",
+      "value": "529.982.247-25",
+      "type": "string"
     },
     {
-      "key": "password",
-      "value": "admin"
-    },
-    {
-      "key": "clientId",
-      "value": "fiap-client"
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "funcionarioId",
@@ -1637,7 +2092,7 @@
     },
     {
       "key": "pecaCodigo",
-      "value": "FILTRO-OLEO-001"
+      "value": "FILTRO-001"
     },
     {
       "key": "pecaId",
@@ -1646,6 +2101,11 @@
     {
       "key": "veiculoId",
       "value": ""
+    },
+    {
+      "key": "servicoCatalogoId",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "servicoId",

@@ -112,7 +112,7 @@ então um push direto em `develop` passa sem nenhuma verificação.
 1. Branch atualizada com o destino (`git merge origin/develop`).
 2. `./gradlew spotlessApply detekt test` verde localmente.
 3. Descrição com o card, o que muda e como testar.
-4. Sem arquivos de build, `.env` ou `terraform.tfstate` no diff.
+4. Sem arquivos de build, `.env` ou credenciais no diff.
 
 **Destino do PR**
 
@@ -147,7 +147,7 @@ quebrar contrato. A primeira entrega estável é a `1.0.0`.
 | Lugar | Valor hoje | Quem atualiza |
 |---|---|---|
 | `build.gradle.kts` → `version` | `0.0.1` | manual, no início da branch `release/*` |
-| Tag git | *nenhuma tag criada* | manual, no merge em `main` |
+| Tag git | *nenhuma tag criada* | manual, no merge em `main` — **dispara o CD de produção** |
 | Tag da imagem no GHCR | `sha-<commit>` + `release-<x.y.z>` | pipeline de CD |
 
 > **Divergência a resolver.** Existe uma branch `release/1.0.0`, mas
@@ -172,7 +172,7 @@ git push -u origin release/1.1.0
 
 # 5. tag anotada no commit de merge
 git checkout main && git pull
-git tag -a v1.1.0 -m "Release 1.1.0"
+git tag -a v1.1.0 -m "Release 1.1.0"   # o push desta tag dispara o CD de producao
 git push origin v1.1.0
 
 # 6. devolve para develop
@@ -255,6 +255,7 @@ Fora do git (veja `.gitignore`):
 
 - `build/`, `.gradle/`, `.kotlin/`, `.idea/`
 - `.env` — use `.env.example` como modelo e `create-env.sh` para gerar
-- `terraform/terraform.tfvars` e `*.tfstate` — o state grava valores sensíveis em texto puro
-- Qualquer credencial. As senhas de staging são geradas pelo Terraform e ficam no
-  Google Secret Manager; o pipeline as lê em runtime.
+- Qualquer credencial. As senhas de staging são geradas pelo Terraform do repositório
+  de infra e ficam no Google Secret Manager; o pipeline as lê em runtime
+- `*.tfvars` e `*.tfstate` seguem no `.gitignore` por segurança, embora o Terraform
+  tenha saído deste repositório — o state grava valores sensíveis em texto puro

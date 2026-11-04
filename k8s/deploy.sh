@@ -77,6 +77,12 @@ if ! kubectl get secret db-credentials -n "$NAMESPACE" >/dev/null 2>&1; then
   echo "          --from-literal=POSTGRES_USER=oficina_app \\" >&2
   echo "          --from-literal=POSTGRES_PASSWORD=\"\$(gcloud secrets versions access latest --secret=tech-challenge-staging-db-password)\"" >&2
   exit 1
+  echo "ERRO: secret db-credentials nao existe no namespace $NAMESPACE." >&2
+  echo "      Crie com a senha do Secret Manager:" >&2
+  echo "        kubectl create secret generic db-credentials -n $NAMESPACE \\" >&2
+  echo "          --from-literal=POSTGRES_USER=oficina_app \\" >&2
+  echo "          --from-literal=POSTGRES_PASSWORD=\"\$(gcloud secrets versions access latest --secret=tech-challenge-staging-db-password)\"" >&2
+  exit 1
 fi
 
 # New Relic: se NEW_RELIC_LICENSE_KEY estiver no ambiente, cria/atualiza o Secret.
@@ -104,6 +110,8 @@ else
   HASHER=(shasum -a 256)
 fi
 
+SECRETS_HASH="$(kubectl get secret db-credentials \
+  -n "$NAMESPACE" -o jsonpath='{.metadata.name}={.data}' \
 SECRET_NAMES=(db-credentials)
 if kubectl get secret newrelic-license -n "$NAMESPACE" >/dev/null 2>&1; then
   SECRET_NAMES+=(newrelic-license)
