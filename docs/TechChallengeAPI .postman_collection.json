@@ -54,11 +54,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/funcionarios",
+              "raw": "{{baseUrl}}/api/v2/funcionarios",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios"
               ]
             }
@@ -76,11 +78,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios",
+              "raw": "{{baseUrl}}/api/v2/funcionarios",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios"
               ]
             }
@@ -98,11 +102,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/id/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/id/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "id",
                 "{{funcionarioId}}"
@@ -122,11 +128,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/nome/Carlos Eduardo Mecânico",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/nome/Carlos Eduardo Mecânico",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "nome",
                 "Carlos Eduardo Mecânico"
@@ -159,11 +167,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "{{funcionarioId}}"
               ]
@@ -177,11 +187,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/funcionarios/{{funcionarioId}}",
+              "raw": "{{baseUrl}}/api/v2/funcionarios/{{funcionarioId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "funcionarios",
                 "{{funcionarioId}}"
               ]
@@ -238,11 +250,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -273,11 +287,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -295,11 +311,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes",
+              "raw": "{{baseUrl}}/api/v2/clientes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes"
               ]
             }
@@ -317,11 +335,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
@@ -340,11 +360,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/nome/João da Silva Santos",
+              "raw": "{{baseUrl}}/api/v2/clientes/nome/João da Silva Santos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "nome",
                 "João da Silva Santos"
@@ -364,11 +386,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/documento/12345678901",
+              "raw": "{{baseUrl}}/api/v2/clientes/documento/12345678901",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "documento",
                 "12345678901"
@@ -388,11 +412,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clientes/documento/12345678000195",
+              "raw": "{{baseUrl}}/api/v2/clientes/documento/12345678000195",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "documento",
                 "12345678000195"
@@ -425,11 +451,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
@@ -443,11 +471,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/clientes/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "clientes",
                 "{{clienteId}}"
               ]
@@ -508,11 +538,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -543,11 +575,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -578,11 +612,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -600,11 +636,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas",
+              "raw": "{{baseUrl}}/api/v2/pecas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas"
               ]
             }
@@ -622,11 +660,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/codigo/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/codigo/{{pecaCodigo}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "codigo",
                 "{{pecaCodigo}}"
@@ -646,11 +686,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/nome/Filtro de Óleo",
+              "raw": "{{baseUrl}}/api/v2/pecas/nome/Filtro de Óleo",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "nome",
                 "Filtro de Óleo"
@@ -683,11 +725,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}"
               ]
@@ -706,11 +750,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/estoque/repor?qtd=10",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/estoque/repor?qtd=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "estoque",
@@ -738,11 +784,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/estoque/retirar?qtd=5",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/estoque/retirar?qtd=5",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "estoque",
@@ -770,11 +818,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}"
               ]
@@ -793,11 +843,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/pecas/{{pecaCodigo}}/reativar",
+              "raw": "{{baseUrl}}/api/v2/pecas/{{pecaCodigo}}/reativar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "pecas",
                 "{{pecaCodigo}}",
                 "reativar"
@@ -853,11 +905,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
             }
@@ -888,11 +942,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
             }
@@ -910,11 +966,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos",
+              "raw": "{{baseUrl}}/api/v2/veiculos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos"
               ]
             }
@@ -932,11 +990,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -955,11 +1015,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/placa/ABC1D23",
+              "raw": "{{baseUrl}}/api/v2/veiculos/placa/ABC1D23",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "placa",
                 "ABC1D23"
@@ -979,11 +1041,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/motorista/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/motorista/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "motorista",
                 "{{clienteId}}"
@@ -1016,11 +1080,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -1034,11 +1100,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/veiculos/{{veiculoId}}",
+              "raw": "{{baseUrl}}/api/v2/veiculos/{{veiculoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "veiculos",
                 "{{veiculoId}}"
               ]
@@ -1095,11 +1163,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos",
+              "raw": "{{baseUrl}}/api/v2/servicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos"
               ]
             }
@@ -1117,11 +1187,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos",
+              "raw": "{{baseUrl}}/api/v2/servicos",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos"
               ]
             }
@@ -1139,11 +1211,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1162,11 +1236,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/cliente/{{clienteId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/cliente/{{clienteId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "cliente",
                 "{{clienteId}}"
@@ -1186,11 +1262,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/orcamento",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/orcamento",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "orcamento"
@@ -1210,11 +1288,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/metricas/tempo-medio",
+              "raw": "{{baseUrl}}/api/v2/servicos/metricas/tempo-medio",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "metricas",
                 "tempo-medio"
@@ -1247,11 +1327,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1265,11 +1347,13 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}"
               ]
@@ -1293,11 +1377,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
@@ -1318,11 +1404,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
@@ -1355,11 +1443,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1393,11 +1483,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1418,11 +1510,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/avancar",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/avancar",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "avancar"
@@ -1456,11 +1550,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1493,11 +1589,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
@@ -1530,11 +1628,13 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/servicos/{{servicoId}}/status",
+              "raw": "{{baseUrl}}/api/v2/servicos/{{servicoId}}/status",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v2",
                 "servicos",
                 "{{servicoId}}",
                 "status"
