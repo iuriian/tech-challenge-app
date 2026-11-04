@@ -31,11 +31,14 @@ ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-900s}"
 
 # Emissor dos tokens. Substituido no app-config: um valor vazio deixaria o
 # placeholder e a validacao do iss falharia em toda requisicao.
-AUTH_ISSUER_URI="${AUTH_ISSUER_URI:-}"
+# O tr remove espacos: um valor so com espaco passa pelo teste -z abaixo e
+# chega ao app-config, onde o jwk-set-uri vira " /.well-known/jwks.json" e o
+# pod entra em CrashLoopBackOff dez minutos depois, longe da causa.
+AUTH_ISSUER_URI="$(printf '%s' "${AUTH_ISSUER_URI:-}" | tr -d '[:space:]')"
 
 # IP privado do Cloud SQL. O cd-staging.yml o descobre via gcloud.
 # sslmode=require casa com o ssl_mode ENCRYPTED_ONLY da instancia.
-DB_HOST="${DB_HOST:-}"
+DB_HOST="$(printf '%s' "${DB_HOST:-}" | tr -d '[:space:]')"
 DB_SSLMODE="${DB_SSLMODE:-require}"
 
 # Nome da app no New Relic, derivado do ambiente. Fixo no manifest, producao
@@ -50,6 +53,13 @@ fi
 if [[ -z "$AUTH_ISSUER_URI" ]]; then
   echo "ERRO: AUTH_ISSUER_URI nao definido - o app-config ficaria com o placeholder" >&2
   echo "      e a aplicacao nao subiria. Ex.: AUTH_ISSUER_URI=https://auth.exemplo $0 ..." >&2
+  exit 1
+fi
+
+# O Spring monta o JWKS como "$AUTH_ISSUER_URI/.well-known/jwks.json" e exige uma
+# URL absoluta; sem esquema o NimbusJwtDecoder falha ao criar o SecurityFilterChain.
+if [[ ! "$AUTH_ISSUER_URI" =~ ^https?:// ]]; then
+  echo "ERRO: AUTH_ISSUER_URI precisa comecar com http:// ou https:// (valor: '$AUTH_ISSUER_URI')" >&2
   exit 1
 fi
 

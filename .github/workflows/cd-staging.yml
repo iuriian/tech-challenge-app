@@ -295,10 +295,21 @@ jobs:
           DB_HOST: ${{ steps.db.outputs.host }}
           DB_SSLMODE: require
         run: |
+          # Um valor so com espacos passaria pelo -z e chegaria ao app-config: o
+          # Spring montaria o JWKS como " /.well-known/jwks.json" e o pod ficaria
+          # em CrashLoopBackOff. Normaliza antes de validar.
+          AUTH_ISSUER_URI="$(printf '%s' "$AUTH_ISSUER_URI" | tr -d '[:space:]')"
           if [ -z "$AUTH_ISSUER_URI" ]; then
-            echo "::error::Variable AUTH_ISSUER_URI ausente no Environment 'staging' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
+            echo "::error::Variable AUTH_ISSUER_URI ausente (ou so com espacos) no Environment 'staging' - sem ela o app-config fica com o placeholder e a aplicacao nao sobe."
             exit 1
           fi
+          case "$AUTH_ISSUER_URI" in
+            http://*|https://*) ;;
+            *)
+              echo "::error::Variable AUTH_ISSUER_URI do Environment 'staging' precisa ser uma URL absoluta com http:// ou https:// (valor: '$AUTH_ISSUER_URI')."
+              exit 1
+              ;;
+          esac
           chmod +x ./k8s/deploy.sh
           echo "🚀 Deploying image: ${{ needs.build.outputs.image }}"
           ./k8s/deploy.sh "${{ needs.build.outputs.image }}" staging ${{ env.KUBE_NAMESPACE }}
