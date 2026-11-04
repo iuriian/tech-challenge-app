@@ -27,7 +27,8 @@ internal class OpenApiConfig {
                 .title("TechChallenge API")
                 .version("1.0.0")
                 .description(
-                    "Obtenha um token em POST {AUTH_ISSUER_URI}/auth/funcionario/token e use o botão **Authorize**.",
+                    "Obtenha um token em POST {AUTH_ISSUER_URI}/auth/token, com {\"cpf\": \"...\"} no corpo, " +
+                        "e use o botão **Authorize**.",
                 ),
         ).components(
             Components().addSecuritySchemes(
