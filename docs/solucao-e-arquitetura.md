@@ -482,5 +482,6 @@ Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 | [ci.md](ci.md) | Detalhamento da pipeline de integração contínua |
 | [cd.md](cd.md) | Detalhamento da pipeline de entrega, rollback e troubleshooting |
 | [adr-001.md](adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway sob Onion Architecture |
+| [adr-002.md](adr-002.md) | Decisão arquitetural: uma identidade de CI por pipeline (proposta, pendente) |
 | [linguagem-ubiqua.md](linguagem-ubiqua.md) | Glossário do domínio |
 | [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Manifests, ambiente local em Kubernetes e infraestrutura (repo separado) |
