@@ -11,9 +11,9 @@ Trabalho acadêmico da **Pós-Graduação em Software Architecture — FIAP PosT
 | | |
 |---|---|
 | 📄 **Documento da entrega** | **[docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md)** — solução, objetivos, arquitetura e instruções completas |
-| 📮 **Collection das APIs** | [Postman](docs/TechChallengeAPI%20.postman_collection.json) · Swagger UI em `/swagger-ui/index.html` · OpenAPI em `/v3/api-docs` |
+| 📮 **Collection das APIs** | [Postman](docs/TechChallengeAPI%20.postman_collection.json) + [environment de staging](docs/TechChallenge-staging.postman_environment.json) · Swagger UI em `/swagger-ui/index.html` · OpenAPI em `/v3/api-docs` |
 | 🎥 **Vídeo demonstrativo** | *(preencher com o link do YouTube/Vimeo, até 15 min)* |
-| 🌐 **Ambiente de staging** | *(preencher com a URL publicada pelo pipeline)* |
+| 🌐 **Ambiente de staging** | **https://oficina-api-gw-b0g80kkl.uc.gateway.dev** — API atrás do API Gateway · [Swagger UI](https://oficina-api-gw-b0g80kkl.uc.gateway.dev/swagger-ui/index.html) · token em `POST https://oficina-auth-gw-b0g80kkl.uc.gateway.dev/auth/token` |
 
 ---
 

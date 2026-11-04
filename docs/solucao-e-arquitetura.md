@@ -10,7 +10,7 @@ provisionada por Terraform em repositório separado.
 | Repositório | <https://github.com/iuriian/tech-challenge> |
 | Collection das APIs | [Postman](TechChallengeAPI%20.postman_collection.json) · Swagger UI em `/swagger-ui/index.html` |
 | Vídeo demonstrativo | *(preencher com o link do YouTube/Vimeo, até 15 min)* |
-| Ambiente de staging | *(preencher com a URL publicada pelo pipeline)* |
+| Ambiente de staging | **https://oficina-api-gw-b0g80kkl.uc.gateway.dev** (API) · https://oficina-auth-gw-b0g80kkl.uc.gateway.dev (emissor dos tokens) |
 
 ---
 
@@ -442,8 +442,20 @@ documentado no [README do repo de infra](https://github.com/iuriian/tech-challen
 |---|---|
 | **Postman** | [`TechChallengeAPI .postman_collection.json`](TechChallengeAPI%20.postman_collection.json) — payloads de teste, importe no Postman |
 | **Postman (completa)** | [`TechChallengeAPI-Completa-Escalabilidade.postman_collection.json`](TechChallengeAPI-Completa-Escalabilidade.postman_collection.json) — todos os recursos mais a pasta de carga da [escalabilidade](escalabilidade.md) |
-| **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` (local) ou `http://<IP-do-LoadBalancer>/swagger-ui/index.html` (staging) |
+| **Environment de staging** | [`TechChallenge-staging.postman_environment.json`](TechChallenge-staging.postman_environment.json) — importe junto e selecione no seletor de environment do Postman |
+| **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` (local) ou https://oficina-api-gw-b0g80kkl.uc.gateway.dev/swagger-ui/index.html (staging, pelo gateway) |
 | **OpenAPI JSON** | `/v3/api-docs` |
+
+**Local ou staging.** As collections vêm com `baseUrl` e `authIssuerUri` apontando para
+`localhost` — é o que faz o `docker compose` e o ambiente com kind funcionarem sem
+ajuste. Para falar com staging, importe o environment acima e selecione-o: ele
+sobrescreve apenas essas duas variáveis, as únicas que mudam entre os dois ambientes
+(os CPFs são os mesmos, vêm das migrations). Os valores:
+
+| Variável | Staging |
+|---|---|
+| `baseUrl` | `https://oficina-api-gw-b0g80kkl.uc.gateway.dev` |
+| `authIssuerUri` | `https://oficina-auth-gw-b0g80kkl.uc.gateway.dev` |
 
 As duas collections cobrem todos os recursos descritos na seção 3.2; a diferença é que
 a completa traz também os endpoints públicos do Actuator e a pasta de carga. Para os
