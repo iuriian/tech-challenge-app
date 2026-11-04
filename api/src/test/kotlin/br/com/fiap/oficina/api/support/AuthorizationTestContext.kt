@@ -8,6 +8,7 @@ import br.com.fiap.oficina.api.controller.PecaController
 import br.com.fiap.oficina.api.controller.ServicoController
 import br.com.fiap.oficina.api.controller.VeiculoController
 import br.com.fiap.oficina.api.exception.GlobalExceptionHandler
+import br.com.fiap.oficina.api.observability.OrdemServicoTelemetry
 import br.com.fiap.oficina.cliente.application.usecase.AtualizarClienteUseCase
 import br.com.fiap.oficina.cliente.application.usecase.BuscarClientePorDocumentoUseCase
 import br.com.fiap.oficina.cliente.application.usecase.BuscarClientePorIdUseCase
@@ -179,6 +180,8 @@ internal open class AuthorizationTestContext : WebMvcConfigurer {
 
     @Bean open fun deletarOrdemServicoUseCase(): DeletarOrdemServicoUseCase = mockk(relaxed = true)
 
+    @Bean open fun ordemServicoTelemetry(): OrdemServicoTelemetry = mockk(relaxed = true)
+
     // ------------------------------------------------------------- controllers
     @Bean
     open fun clienteController(
@@ -246,6 +249,7 @@ internal open class AuthorizationTestContext : WebMvcConfigurer {
         avancar: AvancarStatusOrdemServicoUseCase,
         alterar: AlterarStatusOrdemServicoUseCase,
         deletar: DeletarOrdemServicoUseCase,
+        telemetry: OrdemServicoTelemetry,
     ) = OrdemServicoController(
         criar,
         listar,
@@ -257,5 +261,6 @@ internal open class AuthorizationTestContext : WebMvcConfigurer {
         avancar,
         alterar,
         deletar,
+        telemetry,
     )
 }
