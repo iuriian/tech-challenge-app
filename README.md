@@ -57,7 +57,7 @@ Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-
 | Componente | Tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST. Aplica as migrations do Flyway no boot |
-| **postgres** | PostgreSQL 16-alpine | Service `ClusterIP` 5432 | Base `oficina`, com PVC de 10Gi |
+| **Cloud SQL** | PostgreSQL 16 gerenciado · externo ao cluster | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
 
 Internamente a aplicação segue **Onion Architecture** — o domínio não conhece Spring,
 JPA nem HTTP:
@@ -68,8 +68,8 @@ JPA nem HTTP:
 
 | Provisionado por Terraform | Aplicado pelo pipeline |
 |---|---|
-| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployments de `app` e `postgres` |
-| Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Services, PVC de 10Gi e HPA de 1 a 3 réplicas |
+| Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployment de `app` (o banco é externo) |
+| Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Service `LoadBalancer` e HPA de 1 a 3 réplicas |
 | Secret Manager com a senha do banco | ConfigMaps e Secrets do namespace |
 | Service account `github-actions-cd` e papéis IAM | Namespace e ordem de aplicação (`k8s/deploy.sh`) |
 
@@ -208,7 +208,7 @@ Detalhes: [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#43-provi
 | Camada | Stack |
 |---|---|
 | Backend | Kotlin 2.3 · Java 21 · Spring Boot 3.4 · Spring MVC · Spring Data JPA · Spring Security |
-| Banco | PostgreSQL 16 · Flyway (12 migrations) |
+| Banco | PostgreSQL 16 · Flyway (17 migrations) |
 | Autenticação | OAuth2 Resource Server · JWT · JWKS |
 | Documentação | SpringDoc OpenAPI 2.8.5 · Swagger UI |
 | Qualidade | JUnit 5 · Testcontainers · JaCoCo · Detekt · Spotless/ktlint |

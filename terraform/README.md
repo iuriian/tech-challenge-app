@@ -74,15 +74,16 @@ Requests declarados em `k8s/`:
 
 | | réplicas | CPU | memória |
 |---|---|---|---|
-| app | 1 | 200m | 512Mi |
-| keycloak | 1 | 200m | 512Mi |
-| postgres | 1 | 100m | 256Mi |
-| **total** | | **500m** | **1,25Gi** |
+| app | 1 (HPA até 3) | 100m | 384Mi |
+| **total com 1 réplica** | | **100m** | **384Mi** |
+| **total no teto do HPA** | | **300m** | **1,13Gi** |
+
+> O cluster roda só a aplicação. O banco é um Cloud SQL externo e o emissor de
+> tokens é uma função serverless — nenhum dos dois consome recurso de nó.
 
 Um nó de 4GB não entrega 4GB: o GKE reserva ~1,3GB e ainda roda kube-dns,
 fluentbit e metrics-agent, sobrando ~2,2Gi de memória e ~690m de CPU. **Um**
-`e2-medium` comporta os 500m/1,25Gi — folga confortável de memória, margem
-apertada de CPU.
+`e2-medium` comporta os 300m/1,13Gi do teto do HPA, com folga nas duas dimensões.
 
 Por isso o `app/deployment.yaml` usa `maxSurge: 0`: com um nó só não há CPU para
 dois pods da aplicação simultâneos, e surgir travaria o rollout em `Pending`.

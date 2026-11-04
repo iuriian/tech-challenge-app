@@ -161,15 +161,22 @@ tempo de execução não são mascarados automaticamente pelo GitHub.
 
 A ordem existe por um motivo, e é o que o script encapsula:
 
-1. **Secrets** — cria os de desenvolvimento só se ainda não existirem (no pipeline já
-   vieram do Secret Manager).
-2. **ConfigMaps** — `postgres-initdb` é gerado a partir de `conf/init-db/`, os mesmos
-   arquivos do `docker-compose.yml`.
-3. **PostgreSQL** — PVC antes do Deployment, senão o pod fica `Pending`.
-4. **Aplicação**, com o digest da imagem. O emissor dos tokens é externo ao cluster:
-   chega pelo `app-config` (`AUTH_ISSUER_URI`, `AUTH_AUDIENCE`), sem Service nem
-   descoberta de IP.
-5. **HPA** por último — aplicado antes, o alvo não existiria.
+1. **Secrets** — apenas exige que `db-credentials` já exista no namespace e aborta se
+   não existir. Um padrão de desenvolvimento nunca casaria com a senha do usuário no
+   Cloud SQL, e o erro só apareceria depois, como `CrashLoopBackOff`. No pipeline o
+   secret vem do Secret Manager. O checksum dele entra no pod template, para que uma
+   senha corrigida force um ReplicaSet novo em vez de um apply no-op.
+2. **ConfigMap `app-config`** — recebe `DB_HOST` (IP privado do Cloud SQL),
+   `DB_SSLMODE`, issuer e audience dos tokens no lugar dos placeholders.
+3. **Aplicação**, com o digest da imagem. Emissor de tokens e banco são ambos
+   externos ao cluster e chegam pelo `app-config`, sem Service nem descoberta de
+   IP. O initContainer `wait-for-db` espera o `pg_isready` no `DB_HOST`.
+4. **HPA** por último — aplicado antes, o alvo não existiria.
+
+Não há passo de PostgreSQL: o banco é um Cloud SQL externo, provisionado pelo
+repositório `tech-challenge-database`. O job de deploy resolve o IP privado com
+`gcloud sql instances describe` e aborta se a instância estiver desligada. A pasta
+`k8s/postgres/` e o ConfigMap `postgres-initdb` servem apenas ao ambiente com kind.
 
 O Deployment da aplicação usa `maxSurge: 0`: o pod antigo cai antes do novo subir.
 Num único nó `e2-medium` não há CPU para dois pods simultâneos. O custo é uma breve
@@ -224,7 +231,7 @@ Settings → Environments → **staging**
 | Local (dev) | `docker-compose up -d db` + `./gradlew bootRun` | máquina | container descartável |
 | Local (stack) | `docker-compose --profile full up -d` | máquina | container + volume |
 | Local (k8s) | `./kind/deploy-local.sh` | cluster kind, **mesmos manifests do GKE** | PVC do kind |
-| Staging | push em `release/*` | GKE | PVC de 10Gi |
+| Staging | push em `release/*` | GKE | Cloud SQL externo (repo `tech-challenge-database`) |
 | Produção | — | — | **não existe ainda** |
 
 O ambiente `kind` é o ensaio: valida os manifests de `k8s/` sem gastar recurso na

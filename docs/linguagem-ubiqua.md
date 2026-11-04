@@ -24,12 +24,14 @@ do veículo. O acesso ao sistema é controlado por **perfis** (ADMIN, ATENDENTE,
 
 ## Perfis de acesso (Roles)
 
-Chegam no claim `roles` do JWT emitido pelo provedor externo e são aplicados nas regras por rota e em `@RolesAllowed` (ver `SecurityConfig`).
+Chegam no claim `roles` do JWT emitido pelo provedor externo e são exigidos operação por
+operação em `@RolesAllowed`, declarado nos contratos (`*Api`). O `SecurityConfig` decide
+apenas o que é público e o que exige token; o papel em si é verificado pelo method security.
 
 | Termo         | Significado                                                                | Onde aparece                                    |
 |---------------|----------------------------------------------------------------------------|-------------------------------------------------|
 | **ADMIN**     | Administrador do sistema; acesso total.                                    | `@RolesAllowed("ADMIN")`                        |
-| **ATENDENTE** | Recepciona o cliente, cadastra clientes/veículos e abre/gerencia serviços. | `@RolesAllowed("ATENDENTE")` nos controllers    |
+| **ATENDENTE** | Recepciona o cliente, cadastra clientes/veículos e abre/gerencia serviços. | `@RolesAllowed("ATENDENTE")` nos contratos      |
 | **MECANICO**  | Profissional que executa o diagnóstico e os reparos.                       | Claim `roles` (ainda sem entidade própria)      |
 | **CLIENTE**   | Dono do veículo / solicitante do serviço.                                  | Claim `roles`; entidade `Cliente`               |
 

@@ -41,9 +41,11 @@ Além do fluxo da ordem, o sistema mantém:
 | **Catálogo de serviços** | Serviços oferecidos, com preço, tempo estimado e ativação/desativação |
 | **Ordens de serviço** | Ciclo completo, orçamento calculado e métrica de tempo médio de execução |
 
-O acesso é controlado por **perfis** vindos do JWT e verificados em cada
-endpoint: `ADMIN`, `ATENDENTE`, `MECANICO` e `CLIENTE`. Um cliente não cria ordem de
-serviço; um mecânico não cadastra peça no catálogo.
+O acesso é controlado por **perfis** vindos do claim `roles` do JWT: `ADMIN`,
+`ATENDENTE`, `MECANICO` e `CLIENTE`. Um cliente não cria ordem de serviço; um
+mecânico não cadastra peça no catálogo. O papel exigido é declarado operação por
+operação em `@RolesAllowed`, no contrato de cada recurso, e aplicado pelo method
+security do Spring — quem não tem o perfil recebe `403`; sem token, `401`.
 
 A aplicação é um **monolito modular** em Kotlin sobre Spring Boot, organizado em
 **Onion Architecture**: o domínio não conhece Spring, JPA nem HTTP, o que permite
@@ -92,38 +94,53 @@ de suporte — pull da imagem, escala do HPA, leitura das senhas e validação d
 | Componente | Imagem / tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST do domínio. Aplica as migrations do Flyway no boot |
-| **postgres** | `postgres:16-alpine` | Service `ClusterIP` 5432 | Base `oficina` |
+| **Cloud SQL** | PostgreSQL 16 gerenciado · **externo ao cluster** | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
 
 O emissor dos tokens é externo: a aplicação é apenas um *resource server*, que lê
 `AUTH_ISSUER_URI` e `AUTH_AUDIENCE` e busca o JWKS em
 `${AUTH_ISSUER_URI}/.well-known/jwks.json`.
 
+O banco também é externo. Nada de PostgreSQL roda no cluster: o `app-config` carrega
+`DB_HOST` (IP privado da instância) e `DB_SSLMODE`, e o Deployment monta a URL JDBC
+a partir deles. Os manifests em `k8s/postgres/` existem só para o ambiente local com
+kind, que sobe um Postgres descartável no lugar do Cloud SQL.
+
 **Organização interna do código**
 
 [![Arquitetura de código](arquitetura-codigo.png)](arquitetura-codigo.svg)
 
-| Camada | Pacote | Conteúdo | Padrões |
+| Camada | Onde | Conteúdo | Padrões |
 |---|---|---|---|
-| Apresentação | `presentation` | 6 controllers, DTOs de borda, 5 handlers de exceção | Controller · DTO · Bean Validation · `@ControllerAdvice` · RBAC declarativo |
-| Aplicação | `application` | 6 services, 22 DTOs, 9 mappers, commands e results | Application Service · Facade · Mapper · Command |
-| Domínio | `domain` | 41 use cases, 8 entidades, 6 value objects, 7 interfaces de repositório | Use Case · Entity · Aggregate Root · Value Object · Static Factory · State Machine · Port/Repository |
-| Infraestrutura | `infrastructure` | 7 adaptadores de repositório, 6 mappers, Spring Data JPA, 9 classes de configuração | Adapter · Inversão de Dependência · Anticorruption Layer · Composition Root |
+| Apresentação | módulo `api` | 6 contratos `*Api`, 6 controllers, 12 handlers de exceção, 3 classes de configuração | Contrato declarativo · Controller · Bean Validation · `@RestControllerAdvice` · RBAC por operação |
+| Aplicação | `<feature>/application` | 44 use cases (interface + impl), 24 DTOs, 20 mappers, 5 portas de publicação (`*QueryPort`) | Use Case · DTO · Mapper · Port |
+| Domínio | `<feature>/domain` | entidades, value objects, 6 interfaces de repositório, 6 portas de consulta a outros módulos (`Consultar*`), máquina de estados | Entity · Aggregate Root · Value Object · Static Factory · State Machine · Port/Repository |
+| Infraestrutura | `<feature>/infrastructure` | 6 adaptadores de repositório, 9 entidades JPA, 18 mappers, 6 adaptadores de ACL, 5 query providers | Adapter · Inversão de Dependência · Anticorruption Layer · Composition Root |
+| Kernel compartilhado | módulo `shared` | exceções de domínio, 5 value objects de documento e placa, contratos de mapper | Shared Kernel · Value Object |
 
 A regra que sustenta o desenho: **toda dependência de código aponta para o domínio**.
 O domínio declara a porta (`ClienteRepository`); a infraestrutura a implementa
-(`ClienteRepositoryImpl`). Os use cases são instanciados nas classes
-`*BeanConfiguration`, o que mantém o núcleo livre de anotações do Spring.
+(`ClienteRepositoryImpl`), e o amarrado das duas fica na classe `*Config` de cada
+módulo de feature. As entidades e os value objects não carregam anotação do Spring
+nem do JPA: a persistência é feita por classes `*JPA` separadas, convertidas nos
+mappers de infraestrutura.
+
+Cada módulo de feature só se comunica com outro por uma **porta de consulta**
+(`*QueryPort`) atendida por um `*QueryProvider`, e o consumidor traduz o resultado
+num adaptador de ACL — é o que mantém `ordemservico` acoplado a contratos, e não às
+entidades de `cliente`, `veiculo`, `peca` e `servico`.
 
 **Endpoints principais**
 
 | Recurso | Base | Operações |
 |---|---|---|
-| Clientes | `/clientes` | criar, listar, buscar por id/nome/documento, alterar, remover |
-| Veículos | `/veiculos` | criar, listar, buscar por id/placa/motorista, alterar, remover |
-| Funcionários | `/funcionarios` | criar, listar, buscar por id/nome, alterar, remover |
-| Peças | `/pecas` | criar, listar, buscar por código/nome, alterar, retirar e repor estoque, reativar, remover |
-| Catálogo de serviços | `/catalogo/servicos` | criar, listar ativos, listar todos, buscar, alterar, desativar, reativar |
-| Ordens de serviço | `/servicos` | criar, buscar, listar, listar por cliente, orçamento, avançar status, alterar status, tempo médio, remover |
+| Clientes | `/api/v2/clientes` | criar, listar, buscar por id/nome/documento, alterar, remover |
+| Veículos | `/api/v2/veiculos` | criar, listar, buscar por id/placa/motorista, alterar, remover |
+| Funcionários | `/api/v2/funcionarios` | criar, listar, buscar por id/nome, alterar, remover |
+| Peças | `/api/v2/pecas` | criar, listar, buscar por código, alterar, retirar e repor estoque, reativar, desativar |
+| Catálogo de serviços | `/api/v2/catalogo/servicos` | criar, listar ativos, listar todos, buscar, alterar, desativar, reativar |
+| Ordens de serviço | `/api/v2/servicos` | criar, buscar, listar, listar por cliente, orçamento, avançar status, alterar status, tempo médio, remover |
+
+Todos os recursos ficam sob o prefixo `/api/v2`.
 
 ### 3.3 Infraestrutura provisionada
 
@@ -140,16 +157,23 @@ cada commit.**
 | Service Account | `github-actions-cd`, com papéis de `container.developer` e acesso de leitura aos secrets |
 | APIs do GCP | container, compute, logging, monitoring, secretmanager |
 
+A instância do Cloud SQL **não** é provisionada por este Terraform: ela vive no
+repositório `tech-challenge-database`, que também expõe a action de liga/desliga
+usada para economizar cota em staging. O que este repositório provisiona é o
+cluster, a senha no Secret Manager e a service account do CI.
+
 **Aplicado pelo pipeline** (`k8s/`)
 
 | Recurso | Detalhe |
 |---|---|
-| `Deployment app` | Sem `replicas` fixo — quem controla é o HPA. `RollingUpdate` com `maxSurge: 0`. initContainer `wait-for-db`. Probes de startup, readiness e liveness em `/actuator/health`. Requests 200m/512Mi, limits 1 CPU/1Gi |
+| `Deployment app` | Sem `replicas` fixo — quem controla é o HPA. `RollingUpdate` com `maxSurge: 0`. initContainer `wait-for-db`. Probes de startup, readiness e liveness em `/actuator/health`. Requests 100m/384Mi, limits 1 CPU/1Gi |
 | `HPA app` | 1 a 3 réplicas, alvo de 70% de CPU sobre o *request*, janela de estabilização de 5 min na redução |
-| `Deployment postgres` | Estratégia `Recreate`, probes com `pg_isready` |
-| `PVC postgres-data` | 10Gi, `ReadWriteOnce` |
-| ConfigMaps | `app-config` e `postgres-initdb` — o segundo gerado a partir de `conf/`, os mesmos arquivos usados pelo docker-compose |
+| ConfigMap `app-config` | Nome da base, `DB_HOST` e `DB_SSLMODE` do Cloud SQL, issuer e audience dos tokens. Os placeholders são substituídos pelo `deploy.sh` |
 | Secrets | `db-credentials` (do Secret Manager) e `ghcr-creds` (pull da imagem) |
+
+Não há `Deployment postgres` nem `PVC` no GKE — o `k8s/deploy.sh` aplica apenas
+ConfigMap, Deployment e HPA da aplicação. O ConfigMap `postgres-initdb` é gerado
+pelo `kind/deploy-local.sh` a partir de `conf/`, não pelo pipeline.
 
 ### 3.4 Fluxo de deploy
 
@@ -166,11 +190,15 @@ O encadeamento é o ponto: a imagem é referenciada por **digest** desde o prime
 passo, e a tag legível só é aplicada depois que o smoke test passou. O que foi testado
 é exatamente o que sobe no cluster.
 
-Dentro do `deploy-staging`, a ordem importa e está encapsulada no `k8s/deploy.sh`:
+Dentro do `deploy-staging` a ordem importa. O passo 1 fica no workflow; do 2 ao 4,
+encapsulados no `k8s/deploy.sh`:
 
-1. Secrets e ConfigMaps.
-2. PVC antes do Deployment do PostgreSQL — na ordem inversa o pod fica `Pending`.
-3. Aplicação, com o digest da imagem. O issuer dos tokens vem do `app-config`.
+1. Verificação do Cloud SQL: o job lê o IP privado da instância com
+   `gcloud sql instances describe` e **falha o deploy** se a `activationPolicy` não
+   for `ALWAYS` — instância desligada não é erro de runtime, é deploy abortado.
+2. Secrets e ConfigMap, com `DB_HOST` e `DB_SSLMODE` resolvidos nesse passo.
+3. Aplicação, com o digest da imagem. O initContainer `wait-for-db` espera o
+   `pg_isready` responder no `DB_HOST` antes de o container subir.
 4. HPA por último: aplicado antes, o alvo não existiria.
 
 Detalhamento completo, incluindo rollback e diagnóstico de falhas: [`cd.md`](cd.md).
@@ -367,12 +395,15 @@ staging. Em produção, mantenha a proteção ligada.
 
 | Formato | Onde |
 |---|---|
-| **Postman** | [`TechChallengeAPI .postman_collection.json`](TechChallengeAPI%20.postman_collection.json) — importe no Postman |
+| **Postman** | [`TechChallengeAPI .postman_collection.json`](TechChallengeAPI%20.postman_collection.json) — payloads de teste, importe no Postman |
+| **Postman (completa)** | [`TechChallengeAPI-Completa-Escalabilidade.postman_collection.json`](TechChallengeAPI-Completa-Escalabilidade.postman_collection.json) — todos os recursos mais a pasta de carga da [escalabilidade](escalabilidade.md) |
 | **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` (local) ou `http://<IP-do-LoadBalancer>/swagger-ui/index.html` (staging) |
 | **OpenAPI JSON** | `/v3/api-docs` |
 
-A collection cobre todos os recursos descritos na seção 3.2. Para os endpoints
-protegidos, obtenha o token no emissor configurado em `AUTH_ISSUER_URI`.
+A collection completa cobre todos os recursos descritos na seção 3.2; a de payloads
+de teste não inclui o catálogo de serviços. Para os endpoints protegidos, obtenha o
+token no emissor configurado em `AUTH_ISSUER_URI` — o perfil do token precisa ser um
+dos listados no `@RolesAllowed` da operação, senão a resposta é `403`.
 
 ---
 
