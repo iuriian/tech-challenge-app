@@ -19,9 +19,13 @@ inputs:
     required: false
     default: 'jacocoTestReport'
   reports-glob:
-    description: 'Padrão de busca dos XML do JaCoCo'
+    description: >
+      Padrão de busca dos XML do JaCoCo. Casa o relatório por projeto (raiz e cada
+      módulo em features/) e deliberadamente NÃO casa o agregado em
+      jacoco/testCodeCoverageReport/, cujas classes já estão nos relatórios por
+      projeto -- somar os dois contaria cada classe duas vezes.
     required: false
-    default: '**/build/reports/jacoco/**/*.xml'
+    default: '**/build/reports/jacoco/test/jacocoTestReport.xml'
   fail-below-minimum:
     description: 'Falha o job quando a cobertura ficar abaixo do mínimo'
     required: false

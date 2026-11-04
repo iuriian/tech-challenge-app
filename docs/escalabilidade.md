@@ -11,7 +11,7 @@ O autoscaling tem duas camadas, e só as duas juntas escalam de verdade:
 | Camada | Onde | O que faz |
 |---|---|---|
 | **HPA** (pods) | [`k8s/app/hpa.yaml`](../k8s/app/hpa.yaml) | Cria réplicas do Deployment `app` quando a CPU passa do alvo |
-| **Cluster autoscaler** (nós) | [`terraform/`](../terraform) | Cria nós para acomodar os pods novos |
+| **Cluster autoscaler** (nós) | [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Cria nós para acomodar os pods novos |
 
 Parâmetros atuais do HPA:
 
@@ -62,7 +62,10 @@ metrics-server e aplica o HPA. Ao final:
 | | URL |
 |---|---|
 | App | http://localhost:18080 |
-| Keycloak | http://localhost:18081 |
+
+O emissor dos tokens **não roda no cluster**: é o serviço `tech-challenge-auth`, externo.
+Suba-o à parte (ou use o de staging) e passe a URL em `AUTH_ISSUER_URI` antes do deploy —
+é dela que a aplicação deriva o JWKS e o `iss` que vai exigir dos tokens.
 
 ### Staging (GKE)
 
@@ -90,16 +93,29 @@ docker-compose):
 | Variável | kind | GKE |
 |---|---|---|
 | `baseUrl` | `http://localhost:18080` | `http://<APP_IP>` |
-| `keycloakUrl` | `http://localhost:18081` | `http://<KEYCLOAK_IP>:8080` |
-| `clientId` | `oficina` | `oficina` |
-| `username` / `password` | `admin` / `admin` | `admin` / `admin` |
+| `authIssuerUri` | URL do `tech-challenge-auth` que você subiu | a mesma URL do `AUTH_ISSUER_URI` do `app-config` |
+| `authCpf` | `529.982.247-25` (João Silva, `ATENDENTE`) | idem |
 
-> O `keycloakUrl` precisa ser **a mesma URL pública** que a aplicação recebeu em
-> `KEYCLOAK_URL`. O Spring valida o claim `iss` do token; URLs diferentes resultam em `401`
-> mesmo com token válido.
+> O `authIssuerUri` precisa ser **a mesma URL pública** que a aplicação recebeu em
+> `AUTH_ISSUER_URI`. A aplicação valida o claim `iss` contra ela e busca o JWKS em
+> `${AUTH_ISSUER_URI}/.well-known/jwks.json`; URLs diferentes resultam em `401` mesmo com
+> token válido. O mesmo vale para a audiência (`AUTH_AUDIENCE`, `oficina` por padrão).
 
-O token é obtido e renovado sozinho pelo pre-request script da coleção — importante aqui,
-porque o token do Keycloak expira em ~5 minutos e uma rodada de carga passa disso.
+Rode então `00 - Autenticação e observabilidade > Obter token no emissor`: ele faz o
+`POST {{authIssuerUri}}/auth/token` com `{"cpf": "{{authCpf}}"}` e salva o `access_token` na
+variável `accessToken`, que é o bearer de toda a coleção. **O token não é renovado durante a
+rodada** — ele vale 1 hora (`expires_in: 3600`), o que cobre uma campanha de carga com folga,
+mas se a observação se arrastar além disso, pare, rode o request de token de novo e recomece.
+
+O pre-request script da coleção interrompe a execução quando `accessToken` está vazia: numa
+rodada de 300 iterações isso evita centenas de `401` silenciosos.
+
+> **O setup da pasta `99` exige `ADMIN`.** Os requests `99.07` (`POST /pecas`) e `99.08`
+> (`POST /catalogo/servicos`) exigem o perfil `ADMIN`, que **nenhum CPF produz hoje** — a
+> tabela `funcionarios` só aceita `cargo IN ('ATENDENTE', 'MECANICO')`. Eles são requests de
+> *setup*, pulados a partir da 2ª iteração: prepare a massa de carga uma vez com um token
+> `ADMIN` (quando a constraint e o enum `Cargo` forem ampliados) ou insira a peça e o serviço
+> de catálogo direto no banco. O ciclo medido (`99.10` a `99.15`) roda com `ATENDENTE`.
 
 Antes de cada campanha, rode uma vez (**fora do Runner**) o request
 `99.22 - Reset dos contadores de carga`, que zera latências e contadores preservando a massa
@@ -140,13 +156,19 @@ folga, rode vários processos ao mesmo tempo:
 ```bash
 npm install -g newman
 
+# o newman nao compartilha variaveis entre processos: emita um token antes e passe a todos
+ISSUER=http://localhost:8081   # a mesma URL do AUTH_ISSUER_URI da aplicacao
+TOKEN=$(curl -s -X POST "$ISSUER/auth/token" \
+  -H 'Content-Type: application/json' \
+  -d '{"cpf":"529.982.247-25"}' | jq -r .access_token)
+
 # 4 processos x 200 iterações = 800 ordens de serviço
 for i in 1 2 3 4; do
   newman run "docs/TechChallengeAPI-Completa-Escalabilidade.postman_collection.json" \
     --folder "99 - Escalabilidade automática (carga)" \
     --iteration-count 200 \
     --env-var "baseUrl=http://localhost:18080" \
-    --env-var "keycloakUrl=http://localhost:18081" \
+    --env-var "accessToken=$TOKEN" \
     --reporters cli &
 done
 wait
@@ -239,7 +261,8 @@ entre campanhas — o `99.22` não a apaga de propósito.
 | Pods novos em `Pending` | Falta capacidade de nó: é o cluster autoscaler que precisa entrar, não o HPA |
 | `REPLICAS` chega a 3 e para | É o teto: `maxReplicas: 3` |
 | Réplicas não caem após o teste | Comportamento correto: `scaleDown` só age após 5 min de carga baixa |
-| Muitos `401` durante a carga | `keycloakUrl` diferente do `KEYCLOAK_URL` da aplicação (claim `iss`) |
+| Muitos `401` durante a carga | `accessToken` vencida (1 h), ou `authIssuerUri` diferente do `AUTH_ISSUER_URI` da aplicação (claim `iss`) |
+| `403` no `99.07` ou no `99.08` | Exigem `ADMIN`, que nenhum CPF produz hoje: prepare a massa de carga por fora (ver seção 4) |
 | Muitos `409`/`400` no `99.15` | Esperado: a OS já chegou ao fim da máquina de estados |
 
 ## Lacunas conhecidas

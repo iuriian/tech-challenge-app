@@ -2,7 +2,8 @@
 
 Documento de entrega do Tech Challenge — FIAP PosTech, Software Architecture, Grupo 89.
 Cobre a descrição da solução, os objetivos da fase, o desenho da arquitetura e as
-instruções de execução local, deploy em Kubernetes e provisionamento com Terraform.
+instruções de execução local, deploy em Kubernetes e a fronteira com a infraestrutura
+provisionada por Terraform em repositório separado.
 
 | | |
 |---|---|
@@ -41,9 +42,11 @@ Além do fluxo da ordem, o sistema mantém:
 | **Catálogo de serviços** | Serviços oferecidos, com preço, tempo estimado e ativação/desativação |
 | **Ordens de serviço** | Ciclo completo, orçamento calculado e métrica de tempo médio de execução |
 
-O acesso é controlado por **perfis** emitidos pelo Keycloak e verificados em cada
-endpoint: `ADMIN`, `ATENDENTE`, `MECANICO` e `CLIENTE`. Um cliente não cria ordem de
-serviço; um mecânico não cadastra peça no catálogo.
+O acesso é controlado por **perfis** vindos do claim `roles` do JWT: `ADMIN`,
+`ATENDENTE`, `MECANICO` e `CLIENTE`. Um cliente não cria ordem de serviço; um
+mecânico não cadastra peça no catálogo. O papel exigido é declarado operação por
+operação em `@RolesAllowed`, no contrato de cada recurso, e aplicado pelo method
+security do Spring — quem não tem o perfil recebe `403`; sem token, `401`.
 
 A aplicação é um **monolito modular** em Kotlin sobre Spring Boot, organizado em
 **Onion Architecture**: o domínio não conhece Spring, JPA nem HTTP, o que permite
@@ -62,8 +65,12 @@ avaliação é **como essa aplicação chega ao ar e se mantém no ar**:
 2. **Orquestrar em Kubernetes**, com o que um ambiente real exige: probes de
    inicialização e saúde, limites de recurso, armazenamento persistente,
    configuração e segredos fora da imagem, e escalonamento horizontal automático.
-3. **Provisionar a infraestrutura como código** com Terraform, de modo que o cluster,
-   os segredos e as permissões do CI possam ser recriados do zero por um comando.
+3. **Provisionar a infraestrutura como código** com Terraform, de modo que a rede, o
+   cluster, os segredos e as permissões do CI possam ser recriados do zero por um
+   comando — entregue no repositório
+   [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s),
+   separado por ter ciclo de vida próprio
+   (ver [4.3](#43-infraestrutura-provisionada-fora-deste-repositório)).
 4. **Automatizar a verificação (CI)**: formatação, análise estática, testes unitários
    e de integração e um piso de cobertura, executados a cada Pull Request.
 5. **Automatizar a entrega (CD)**: build da imagem, teste de fumaça da imagem antes de
@@ -92,62 +99,91 @@ de suporte — pull da imagem, escala do HPA, leitura das senhas e validação d
 | Componente | Imagem / tecnologia | Exposição | Função |
 |---|---|---|---|
 | **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST do domínio. Aplica as migrations do Flyway no boot |
-| **keycloak** | `quay.io/keycloak/keycloak:26.2.1` | Service `LoadBalancer` 8080 | Emissor dos tokens JWT, realm `Fiap` importado de `conf/realm-export.json` |
-| **postgres** | `postgres:16-alpine` | Service `ClusterIP` 5432 | Bases `oficina` e `keycloak` |
+| **Cloud SQL** | PostgreSQL 16 gerenciado · **externo ao cluster** | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
+
+O emissor dos tokens é externo: a aplicação é apenas um *resource server*, que lê
+`AUTH_ISSUER_URI` e `AUTH_AUDIENCE` e busca o JWKS em
+`${AUTH_ISSUER_URI}/.well-known/jwks.json`.
+
+O banco também é externo. Nada de PostgreSQL roda no cluster: o `app-config` carrega
+`DB_HOST` (IP privado da instância) e `DB_SSLMODE`, e o Deployment monta a URL JDBC
+a partir deles. Os manifests em `k8s/postgres/` existem só para o ambiente local com
+kind, que sobe um Postgres descartável no lugar do Cloud SQL.
 
 **Organização interna do código**
 
 [![Arquitetura de código](arquitetura-codigo.png)](arquitetura-codigo.svg)
 
-| Camada | Pacote | Conteúdo | Padrões |
+| Camada | Onde | Conteúdo | Padrões |
 |---|---|---|---|
-| Apresentação | `presentation` | 6 controllers, DTOs de borda, 5 handlers de exceção | Controller · DTO · Bean Validation · `@ControllerAdvice` · RBAC declarativo |
-| Aplicação | `application` | 6 services, 22 DTOs, 9 mappers, commands e results | Application Service · Facade · Mapper · Command |
-| Domínio | `domain` | 41 use cases, 8 entidades, 6 value objects, 7 interfaces de repositório | Use Case · Entity · Aggregate Root · Value Object · Static Factory · State Machine · Port/Repository |
-| Infraestrutura | `infrastructure` | 7 adaptadores de repositório, 6 mappers, Spring Data JPA, 9 classes de configuração | Adapter · Inversão de Dependência · Anticorruption Layer · Composition Root |
+| Apresentação | módulo `api` | 6 contratos `*Api`, 6 controllers, 12 handlers de exceção, 3 classes de configuração | Contrato declarativo · Controller · Bean Validation · `@RestControllerAdvice` · RBAC por operação |
+| Aplicação | `<feature>/application` | 44 use cases (interface + impl), 24 DTOs, 20 mappers, 5 portas de publicação (`*QueryPort`) | Use Case · DTO · Mapper · Port |
+| Domínio | `<feature>/domain` | entidades, value objects, 6 interfaces de repositório, 6 portas de consulta a outros módulos (`Consultar*`), máquina de estados | Entity · Aggregate Root · Value Object · Static Factory · State Machine · Port/Repository |
+| Infraestrutura | `<feature>/infrastructure` | 6 adaptadores de repositório, 9 entidades JPA, 18 mappers, 6 adaptadores de ACL, 5 query providers | Adapter · Inversão de Dependência · Anticorruption Layer · Composition Root |
+| Kernel compartilhado | módulo `shared` | exceções de domínio, 5 value objects de documento e placa, contratos de mapper | Shared Kernel · Value Object |
 
 A regra que sustenta o desenho: **toda dependência de código aponta para o domínio**.
 O domínio declara a porta (`ClienteRepository`); a infraestrutura a implementa
-(`ClienteRepositoryImpl`). Os use cases são instanciados nas classes
-`*BeanConfiguration`, o que mantém o núcleo livre de anotações do Spring.
+(`ClienteRepositoryImpl`), e o amarrado das duas fica na classe `*Config` de cada
+módulo de feature. As entidades e os value objects não carregam anotação do Spring
+nem do JPA: a persistência é feita por classes `*JPA` separadas, convertidas nos
+mappers de infraestrutura.
+
+Cada módulo de feature só se comunica com outro por uma **porta de consulta**
+(`*QueryPort`) atendida por um `*QueryProvider`, e o consumidor traduz o resultado
+num adaptador de ACL — é o que mantém `ordemservico` acoplado a contratos, e não às
+entidades de `cliente`, `veiculo`, `peca` e `servico`.
 
 **Endpoints principais**
 
 | Recurso | Base | Operações |
 |---|---|---|
-| Clientes | `/clientes` | criar, listar, buscar por id/nome/documento, alterar, remover |
-| Veículos | `/veiculos` | criar, listar, buscar por id/placa/motorista, alterar, remover |
-| Funcionários | `/funcionarios` | criar, listar, buscar por id/nome, alterar, remover |
-| Peças | `/pecas` | criar, listar, buscar por código/nome, alterar, retirar e repor estoque, reativar, remover |
-| Catálogo de serviços | `/catalogo/servicos` | criar, listar ativos, listar todos, buscar, alterar, desativar, reativar |
-| Ordens de serviço | `/servicos` | criar, buscar, listar, listar por cliente, orçamento, avançar status, alterar status, tempo médio, remover |
+| Clientes | `/api/v2/clientes` | criar, listar, buscar por id/nome/documento, alterar, remover |
+| Veículos | `/api/v2/veiculos` | criar, listar, buscar por id/placa/motorista, alterar, remover |
+| Funcionários | `/api/v2/funcionarios` | criar, listar, buscar por id/nome, alterar, remover |
+| Peças | `/api/v2/pecas` | criar, listar, buscar por código, alterar, retirar e repor estoque, reativar, desativar |
+| Catálogo de serviços | `/api/v2/catalogo/servicos` | criar, listar ativos, listar todos, buscar, alterar, desativar, reativar |
+| Ordens de serviço | `/api/v2/servicos` | criar, buscar, listar, listar por cliente, orçamento, avançar status, alterar status, tempo médio, remover |
+
+Todos os recursos ficam sob o prefixo `/api/v2`.
 
 ### 3.3 Infraestrutura provisionada
 
 A fronteira é deliberada: **o Terraform cuida do que dura; o pipeline, do que muda a
-cada commit.**
+cada commit.** Ela separa também os repositórios: o que dura tem ciclo de vida e
+state próprios, e por isso vive fora do repositório da aplicação.
 
-**Provisionado por Terraform** (`terraform/`)
+**Provisionado por Terraform** — repositório
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s)
 
 | Recurso | Valor |
 |---|---|
 | Cluster GKE | `tech-challenge-staging`, zonal em `us-central1-a`, release channel REGULAR, VPC-native |
 | Node pool `primary` | `e2-medium`, disco `pd-balanced` de 30 GB, **spot VMs**, autoscaling de 1 a 3 nós, auto-repair e auto-upgrade |
-| Secret Manager | `<cluster>-db-password` e `<cluster>-keycloak-admin-password`, com senhas aleatórias geradas no apply |
+| Secret Manager | `<cluster>-db-password`, com senha aleatória gerada no apply |
 | Service Account | `github-actions-cd`, com papéis de `container.developer` e acesso de leitura aos secrets |
 | APIs do GCP | container, compute, logging, monitoring, secretmanager |
+| VPC e subnet | Rede sem subnets automáticas, subnet única em `10.128.0.0/20` com Private Google Access. Compartilhada com o peering do Cloud SQL e o egress do serviço de autenticação — os outros repositórios a localizam **pelo nome**, que é o contrato entre eles |
+
+A instância do Cloud SQL **não** é provisionada por esse Terraform: ela vive no
+repositório
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database), que
+também expõe a action de liga/desliga usada para economizar cota em staging. **Este**
+repositório não provisiona nada — apenas consome o cluster e os segredos que já
+existem.
 
 **Aplicado pelo pipeline** (`k8s/`)
 
 | Recurso | Detalhe |
 |---|---|
-| `Deployment app` | Sem `replicas` fixo — quem controla é o HPA. `RollingUpdate` com `maxSurge: 0`. initContainer `wait-for-db`. Probes de startup, readiness e liveness em `/actuator/health`. Requests 200m/512Mi, limits 1 CPU/1Gi |
+| `Deployment app` | Sem `replicas` fixo — quem controla é o HPA. `RollingUpdate` com `maxSurge: 0`. initContainer `wait-for-db`. Probes de startup, readiness e liveness em `/actuator/health`. Requests 100m/384Mi, limits 1 CPU/1Gi |
 | `HPA app` | 1 a 3 réplicas, alvo de 70% de CPU sobre o *request*, janela de estabilização de 5 min na redução |
-| `Deployment keycloak` | Realm importado de ConfigMap, `KC_HOSTNAME` com o IP público do LoadBalancer |
-| `Deployment postgres` | Estratégia `Recreate`, probes com `pg_isready` |
-| `PVC postgres-data` | 10Gi, `ReadWriteOnce` |
-| ConfigMaps | `app-config`, `postgres-initdb`, `keycloak-realm` — os dois últimos gerados a partir de `conf/`, os mesmos arquivos usados pelo docker-compose |
-| Secrets | `db-credentials`, `keycloak-credentials` (do Secret Manager) e `ghcr-creds` (pull da imagem) |
+| ConfigMap `app-config` | Nome da base, `DB_HOST` e `DB_SSLMODE` do Cloud SQL, issuer e audience dos tokens. Os placeholders são substituídos pelo `deploy.sh` |
+| Secrets | `db-credentials` (do Secret Manager) e `ghcr-creds` (pull da imagem) |
+
+Não há `Deployment postgres` nem `PVC` no GKE — o `k8s/deploy.sh` aplica apenas
+ConfigMap, Deployment e HPA da aplicação. O ConfigMap `postgres-initdb` é gerado
+pelo `kind/deploy-local.sh` a partir de `conf/`, não pelo pipeline.
 
 ### 3.4 Fluxo de deploy
 
@@ -158,21 +194,30 @@ flowchart LR
     C --> D["promote<br/>tag release-x.y.z<br/>no digest testado"]
     D --> E["deploy-staging<br/>secrets + dry-run<br/>k8s/deploy.sh"]
     E --> F(["URL publicada<br/>no Environment staging"])
+    F -->|"merge em main<br/>tag vX.Y.Z"| G["CD - Production<br/>resolve o digest<br/>de release-x.y.z"]
+    G --> H["smoke test<br/>do digest promovido"]
+    H --> I(["Produção<br/>no Environment production"])
 ```
 
 O encadeamento é o ponto: a imagem é referenciada por **digest** desde o primeiro
 passo, e a tag legível só é aplicada depois que o smoke test passou. O que foi testado
 é exatamente o que sobe no cluster.
 
-Dentro do `deploy-staging`, a ordem importa e está encapsulada no `k8s/deploy.sh`:
+Produção estende essa mesma garantia: ela **não builda**. A tag `v1.1.0` resolve no
+GHCR a imagem `release-1.1.0` — aquela que o staging validou — e promove o digest.
+Versão que nunca passou por homologação não tem essa tag, e o deploy falha dizendo
+isso. A aprovação manual vem dos *required reviewers* do Environment `production`.
 
-1. Secrets e ConfigMaps.
-2. PVC antes do Deployment do PostgreSQL — na ordem inversa o pod fica `Pending`.
-3. Service do Keycloak e **espera pelo IP externo** — o `issuer` do token precisa ser
-   a URL pública, então o endereço tem de ser conhecido antes de subir o Keycloak.
-4. Deployment do Keycloak com `KC_HOSTNAME` já apontando para esse IP.
-5. Aplicação, com o digest da imagem e o issuer público.
-6. HPA por último: aplicado antes, o alvo não existiria.
+Dentro do `deploy-staging` a ordem importa. O passo 1 fica no workflow; do 2 ao 4,
+encapsulados no `k8s/deploy.sh`:
+
+1. Verificação do Cloud SQL: o job lê o IP privado da instância com
+   `gcloud sql instances describe` e **falha o deploy** se a `activationPolicy` não
+   for `ALWAYS` — instância desligada não é erro de runtime, é deploy abortado.
+2. Secrets e ConfigMap, com `DB_HOST` e `DB_SSLMODE` resolvidos nesse passo.
+3. Aplicação, com o digest da imagem. O initContainer `wait-for-db` espera o
+   `pg_isready` responder no `DB_HOST` antes de o container subir.
+4. HPA por último: aplicado antes, o alvo não existiria.
 
 Detalhamento completo, incluindo rollback e diagnóstico de falhas: [`cd.md`](cd.md).
 
@@ -199,7 +244,7 @@ cp .env.example .env     # ou ./create-env.sh
 **Opção A — infraestrutura em container, aplicação na IDE** *(recomendado para desenvolver)*
 
 ```bash
-docker compose up -d db keycloak
+docker compose up -d db
 ./gradlew bootRun                 # Windows: gradlew.bat bootRun
 ```
 
@@ -215,8 +260,7 @@ docker compose down               # para encerrar
 |---|---|---|
 | Aplicação (perfil `full`) | <http://localhost:8090> | — |
 | Aplicação (`bootRun`) | <http://localhost:8080> | — |
-| Swagger UI | `<url-da-app>/swagger-ui/index.html` | via Keycloak |
-| Keycloak | <http://localhost:8081> | `admin` / `admin` |
+| Swagger UI | `<url-da-app>/swagger-ui/index.html` | bearer JWT |
 | PostgreSQL | `localhost:5432` | `user` / `password` |
 | Nginx (perfil `full`) | <http://localhost> | — |
 
@@ -224,21 +268,12 @@ Para usar os domínios do Nginx, acrescente ao `hosts` do sistema (o conteúdo e
 `conf/hosts`):
 
 ```
-127.0.0.1 sso.postech.com.br
 127.0.0.1 api.postech.com.br
 ```
 
-**Usuários pré-configurados no realm `Fiap`**
-
-| Usuário | Senha | Perfil |
-|---|---|---|
-| `admin` | `admin` | ADMIN |
-| `atendente` | `atendente` | ATENDENTE |
-| `mecanico` | `mecanico` | MECANICO |
-| `clientepadrao` | `clientepadrao` | CLIENTE |
-
-**Autenticando no Swagger UI:** clique em **Authorize**, informe o client `oficina` e
-faça login com um dos usuários acima. O token é reaproveitado nas chamadas seguintes.
+**Autenticando no Swagger UI:** obtenha um bearer no emissor configurado em
+`AUTH_ISSUER_URI`, clique em **Authorize** e informe o token. Ele é reaproveitado nas
+chamadas seguintes.
 
 **Opção C — Kubernetes local com kind** *(valida os mesmos manifests do GKE)*
 
@@ -249,7 +284,7 @@ APP_HOST_PORT=19000 ./kind/deploy-local.sh  # se as portas padrão estiverem ocu
 ./kind/down.sh                              # destrói o cluster
 ```
 
-Portas padrão: aplicação em `18080`, Keycloak em `18081`. Os scripts são bash — no
+Porta padrão da aplicação: `18080`. Os scripts são bash — no
 Windows, use Git Bash ou WSL. Detalhes em [`kind/README.md`](../kind/README.md).
 
 **Rodando os testes**
@@ -271,7 +306,7 @@ git push -u origin release/1.1.0
 
 O push dispara o workflow `CD - Staging`, que builda, testa, promove e faz o deploy.
 A URL fica publicada no Environment `staging` do GitHub, e o resumo do job traz os
-links da aplicação, do Swagger e do Keycloak.
+links da aplicação e do Swagger.
 
 **Manualmente**, com `kubectl` já autenticado no cluster:
 
@@ -287,10 +322,6 @@ kubectl create namespace tech-challenge-staging
 kubectl create secret generic db-credentials \
   --from-literal=POSTGRES_USER=user \
   --from-literal=POSTGRES_PASSWORD='SENHA_FORTE' -n tech-challenge-staging
-
-kubectl create secret generic keycloak-credentials \
-  --from-literal=KEYCLOAK_ADMIN_USER=admin \
-  --from-literal=KEYCLOAK_ADMIN_PASSWORD='SENHA_FORTE' -n tech-challenge-staging
 
 kubectl create secret docker-registry ghcr-creds \
   --docker-server=ghcr.io --docker-username=SEU_USUARIO \
@@ -321,60 +352,61 @@ Migrations precisam ser compatíveis com a versão anterior da aplicação.
 
 Detalhes dos manifests e da ordem de aplicação: [`k8s/README.md`](../k8s/README.md).
 
-### 4.3 Provisionamento da infraestrutura com Terraform
+### 4.3 Infraestrutura provisionada fora deste repositório
 
-**Pré-requisitos:** conta no GCP com billing ativo, `gcloud` e `terraform` instalados.
+O Terraform não está aqui. A VPC, o cluster GKE, os segredos do Secret Manager e a
+service account do CI são provisionados por
+[`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s);
+a instância do Cloud SQL, por
+[`tech-challenge-database`](https://github.com/iuriian/tech-challenge-database).
 
-```bash
-gcloud auth application-default login
+A separação é de ciclo de vida, não organizacional: o cluster sobrevive a centenas de
+deploys da aplicação, e um `terraform apply` disparado pelo pipeline da aplicação
+colocaria state de infraestrutura no caminho crítico de cada release — com dois
+`apply` concorrentes assim que dois deploys coincidissem. No repositório de infra o
+provisionamento tem pipeline próprio (`terraform plan` em Pull Request, `apply` no
+merge para a main) e state remoto em bucket GCS, que ali deixa de ser recomendação:
+as senhas de staging são geradas por `random_password` e ficam gravadas no state.
 
-cd terraform
-cp terraform.tfvars.example terraform.tfvars   # ajuste project_id
-terraform init
-terraform plan
-terraform apply                                # 5 a 10 minutos
-```
+**O que atravessa a fronteira.** Três valores de identificação e uma credencial. Os
+três primeiros saem de `terraform output github_environment_variables`, rodado no
+repo de infra, e o `terraform output -raw get_credentials_command` entrega o comando
+de `get-credentials` já montado.
 
-Ao final, o `apply` entrega o que precisa ser cadastrado no GitHub:
-
-```bash
-terraform output github_environment_variables
-terraform output ci_service_account_email
-eval "$(terraform output -raw get_credentials_command)"
-kubectl get nodes
-```
-
-**Configuração no GitHub** — Settings → Environments → `staging`:
+**Configuração no GitHub** — Settings → Environments → `staging` (o environment
+`production` pede os mesmos, apontando para o ambiente de produção, mais os
+*required reviewers*):
 
 | Tipo | Nome | Obrigatório | Descrição |
 |---|---|---|---|
 | Secret | `GCP_SA_KEY` | sim | JSON da chave da service account do CI |
 | Secret | `GHCR_PAT` | recomendado | PAT com `read:packages`. Sem ele o `GITHUB_TOKEN` expira ao fim do job e pods que reiniciarem falham com `ImagePullBackOff` |
-| Variable | `GCP_PROJECT_ID` | sim | Projeto no GCP |
-| Variable | `GKE_CLUSTER` | sim | Nome do cluster — também prefixa os secrets no Secret Manager |
-| Variable | `GKE_ZONE` | sim | Zona do cluster |
+| Secret | `GCP_PROJECT_ID` | sim | Projeto no GCP |
+| Secret | `GKE_CLUSTER` | sim | Nome do cluster — também prefixa os secrets no Secret Manager |
+| Secret | `GKE_ZONE` | sim | Zona do cluster |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
 
 A chave da service account **não** é criada pelo Terraform de propósito: o recurso
 `google_service_account_key` gravaria a chave privada no state em texto puro. Gere-a
-manualmente conforme o [`terraform/README.md`](../terraform/README.md).
+manualmente conforme o
+[README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#chave-do-gcp_sa_key).
 
-**Parâmetros ajustáveis** (`terraform/variables.tf`): `machine_type`,
-`min_node_count`, `max_node_count`, `disk_size_gb`, `use_spot_vms`, `zone`.
+**Parâmetros de capacidade** (`terraform/variables.tf`, no repo de infra):
+`machine_type`, `min_node_count`, `max_node_count`, `disk_size_gb`, `use_spot_vms`,
+`zone`. Se o HPA deixar pods em `Pending`, é `max_node_count` que precisa subir — e a
+mudança é um Pull Request lá, não aqui.
 
-**Destruindo o ambiente**
+**Apontando o `kubectl` local para o cluster**
 
 ```bash
-terraform destroy
+gcloud container clusters get-credentials <GKE_CLUSTER> \
+  --zone <GKE_ZONE> --project <GCP_PROJECT_ID>
+kubectl get nodes
 ```
 
-O cluster é criado com `deletion_protection = false` justamente para permitir isso em
-staging. Em produção, mantenha a proteção ligada.
-
-> **State remoto.** O state local funciona para uma pessoa, mas some ao trocar de
-> máquina e não suporta dois `apply` simultâneos. Para usar um bucket GCS, veja a
-> seção correspondente no [`terraform/README.md`](../terraform/README.md).
-> Nunca versione o `.tfstate` — ele grava valores sensíveis em texto puro.
+O ciclo de criar e destruir o ambiente — incluindo o `terraform destroy`, possível em
+staging porque o cluster é criado com `deletion_protection = false` — está
+documentado no [README do repo de infra](https://github.com/iuriian/tech-challenge-infra-k8s#readme).
 
 ---
 
@@ -382,12 +414,22 @@ staging. Em produção, mantenha a proteção ligada.
 
 | Formato | Onde |
 |---|---|
-| **Postman** | [`TechChallengeAPI .postman_collection.json`](TechChallengeAPI%20.postman_collection.json) — importe no Postman |
+| **Postman** | [`TechChallengeAPI .postman_collection.json`](TechChallengeAPI%20.postman_collection.json) — payloads de teste, importe no Postman |
+| **Postman (completa)** | [`TechChallengeAPI-Completa-Escalabilidade.postman_collection.json`](TechChallengeAPI-Completa-Escalabilidade.postman_collection.json) — todos os recursos mais a pasta de carga da [escalabilidade](escalabilidade.md) |
 | **Swagger UI** | `http://localhost:8080/swagger-ui/index.html` (local) ou `http://<IP-do-LoadBalancer>/swagger-ui/index.html` (staging) |
 | **OpenAPI JSON** | `/v3/api-docs` |
 
-A collection cobre todos os recursos descritos na seção 3.2. Para os endpoints
-protegidos, obtenha o token no Keycloak com um dos usuários da tabela em 4.1.
+As duas collections cobrem todos os recursos descritos na seção 3.2; a diferença é que
+a completa traz também os endpoints públicos do Actuator e a pasta de carga. Para os
+endpoints protegidos, obtenha o token com `POST {AUTH_ISSUER_URI}/auth/token` e
+`{"cpf": "..."}` no corpo — as duas collections têm um request pronto para isso na pasta
+`00`. O perfil vem do cadastro do CPF, não da requisição, e precisa ser um dos listados
+no `@RolesAllowed` da operação, senão a resposta é `403`.
+
+> Nenhum CPF produz o perfil `ADMIN` hoje: `funcionarios` aceita apenas
+> `cargo IN ('ATENDENTE', 'MECANICO')` e o enum `Cargo` conhece só esses dois. O emissor
+> já traduz `ADMIN`, mas as operações `@RolesAllowed("ADMIN")` ficam inalcançáveis até
+> que a constraint e o enum sejam ampliados aqui.
 
 ---
 
@@ -397,10 +439,10 @@ protegidos, obtenha o token no Keycloak com um dos usuários da tabela em 4.1.
 
 Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 
-1. `terraform apply` e o cluster criado no console do GCP.
+1. `terraform apply` no repositório de infra e o cluster criado no console do GCP.
 2. Abertura de um Pull Request e a CI reprovando/aprovando com os comentários no PR.
 3. Push em `release/*` e o CD executando: build, smoke test, promoção e deploy.
-4. Aplicação no ar em staging: Swagger autenticado via Keycloak e um fluxo completo de
+4. Aplicação no ar em staging: Swagger autenticado com bearer JWT e um fluxo completo de
    ordem de serviço, do cadastro à entrega.
 5. `kubectl get pods,hpa` mostrando o escalonamento e os probes.
 
@@ -415,5 +457,4 @@ Roteiro sugerido, cobrindo o que é avaliado nesta fase:
 | [cd.md](cd.md) | Detalhamento da pipeline de entrega, rollback e troubleshooting |
 | [adr-001.md](adr-001.md) | Decisão arquitetural: PostgreSQL e Flyway sob Onion Architecture |
 | [linguagem-ubiqua.md](linguagem-ubiqua.md) | Glossário do domínio |
-| [relatorio-vulnerabilidades.md](relatorio-vulnerabilidades.md) | Levantamento de vulnerabilidades das dependências |
-| [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`../terraform/README.md`](../terraform/README.md) | Manifests, ambiente local em Kubernetes e infraestrutura |
+| [`../k8s/README.md`](../k8s/README.md) · [`../kind/README.md`](../kind/README.md) · [`tech-challenge-infra-k8s`](https://github.com/iuriian/tech-challenge-infra-k8s) | Manifests, ambiente local em Kubernetes e infraestrutura (repo separado) |

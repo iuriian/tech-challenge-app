@@ -1,0 +1,47 @@
+# Configuração do New Relic Java Agent.
+# A license key NÃO fica aqui — vem da env NEW_RELIC_LICENSE_KEY em runtime.
+# O nome da app pode ser sobrescrito com NEW_RELIC_APP_NAME.
+#
+# Docs: https://docs.newrelic.com/docs/apm/agents/java-agent/configuration/java-agent-configuration-config-file/
+
+common: &default_settings
+  license_key: ""
+  app_name: oficina-mecanica-staging
+
+  distributed_tracing:
+    enabled: true
+
+  # Em container, log no stdout (visível via kubectl logs)
+  log_level: info
+  log_file_name: STDOUT
+
+  application_logging:
+    enabled: true
+    forwarding:
+      enabled: true
+      max_samples_stored: 10000
+    metrics:
+      enabled: true
+    local_decorating:
+      enabled: true
+
+  error_collector:
+    enabled: true
+
+  transaction_tracer:
+    enabled: true
+
+  browser_monitoring:
+    auto_instrument: false
+
+development:
+  <<: *default_settings
+  app_name: oficina-mecanica-dev
+
+staging:
+  <<: *default_settings
+  app_name: oficina-mecanica-staging
+
+production:
+  <<: *default_settings
+  app_name: oficina-mecanica-production

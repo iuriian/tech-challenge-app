@@ -1,0 +1,46 @@
+package br.com.fiap.oficina.funcionario.domain
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
+import java.util.UUID
+import kotlin.test.assertFailsWith
+
+@DisplayName("Value object - FuncionarioId")
+class FuncionarioIdTest {
+    @Test
+    @DisplayName("Dado dois ids gerados, quando comparar, então devem ser diferentes")
+    fun givenTwoGeneratedIds_whenComparing_thenShouldBeDifferent() {
+        assertNotEquals(FuncionarioId.generate(), FuncionarioId.generate())
+    }
+
+    @Test
+    @DisplayName("Dado um uuid válido, quando converter para id, então deve preservar o valor")
+    fun givenValidUuid_whenConvertingToId_thenPreserveValue() {
+        val id = FuncionarioId.toUUID(UUID_VALIDO)
+
+        assertEquals(UUID.fromString(UUID_VALIDO), id.value)
+    }
+
+    @Test
+    @DisplayName("Dado um uuid inválido, quando converter para id, então deve lançar exceção")
+    fun givenInvalidUuid_whenConvertingToId_thenThrowException() {
+        assertFailsWith<IllegalArgumentException> {
+            FuncionarioId.toUUID("nao-e-um-uuid")
+        }
+    }
+
+    @Test
+    @DisplayName("Dado um id, quando converter para texto, então deve retornar o uuid")
+    fun givenId_whenConvertingToString_thenReturnUuid() {
+        val id = FuncionarioId.toUUID(UUID_VALIDO)
+
+        assertEquals(UUID_VALIDO, id.toString())
+        assertEquals(UUID_VALIDO, id.value.toString())
+    }
+
+    private companion object {
+        const val UUID_VALIDO = "00000000-0000-0000-0000-000000000100"
+    }
+}
