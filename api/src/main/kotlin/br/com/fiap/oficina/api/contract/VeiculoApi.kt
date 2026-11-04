@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 
-@RequestMapping("/veiculos")
+@RequestMapping("/api/v2/veiculos")
 @Tag(name = "Veículos", description = "Operações relacionadas ao gerenciamento de veículos")
 interface VeiculoApi {
     @PostMapping

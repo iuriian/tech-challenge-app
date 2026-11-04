@@ -267,15 +267,17 @@ class AuthorizationRulesTest {
     @TestFactory
     @DisplayName("Veiculos")
     fun veiculos(): List<DynamicNode> = matriz(
-        caso("POST", "/veiculos", ATENDENTE_ADMIN) { post(it).corpo(ApiFixtures.veiculoRequest()) },
-        caso("GET", "/veiculos", ATENDENTE_ADMIN) { get(it) },
-        caso("GET", "/veiculos/{id}", ATENDENTE_ADMIN) { get(it, ApiFixtures.VEICULO_ID) },
-        caso("GET", "/veiculos/placa/{placa}", ATENDENTE_ADMIN) { get(it, ApiFixtures.PLACA) },
-        caso("GET", "/veiculos/motorista/{motoristaId}", ATENDENTE_ADMIN) { get(it, ApiFixtures.PROPRIETARIO_ID) },
-        caso("PUT", "/veiculos/{id}", ATENDENTE_ADMIN) {
+        caso("POST", "/api/v2/veiculos", ATENDENTE_ADMIN) { post(it).corpo(ApiFixtures.veiculoRequest()) },
+        caso("GET", "/api/v2/veiculos", ATENDENTE_ADMIN) { get(it) },
+        caso("GET", "/api/v2/veiculos/{id}", ATENDENTE_ADMIN) { get(it, ApiFixtures.VEICULO_ID) },
+        caso("GET", "/api/v2/veiculos/placa/{placa}", ATENDENTE_ADMIN) { get(it, ApiFixtures.PLACA) },
+        caso("GET", "/api/v2/veiculos/motorista/{motoristaId}", ATENDENTE_ADMIN) {
+            get(it, ApiFixtures.PROPRIETARIO_ID)
+        },
+        caso("PUT", "/api/v2/veiculos/{id}", ATENDENTE_ADMIN) {
             put(it, ApiFixtures.VEICULO_ID).corpo(ApiFixtures.veiculoRequest())
         },
-        caso("DELETE", "/veiculos/{id}", SO_ADMIN) { delete(it, ApiFixtures.VEICULO_ID) },
+        caso("DELETE", "/api/v2/veiculos/{id}", SO_ADMIN) { delete(it, ApiFixtures.VEICULO_ID) },
     )
 
     @TestFactory
@@ -321,7 +323,7 @@ class AuthorizationRulesTest {
     @DisplayName("Dado nenhum token, quando chamar endpoint protegido, entao deve retornar 401")
     fun givenNoToken_whenCallingProtectedEndpoint_thenReturn401() {
         mockMvc.perform(get("/api/v2/clientes")).andExpect(status().isUnauthorized)
-        mockMvc.perform(get("/veiculos")).andExpect(status().isUnauthorized)
+        mockMvc.perform(get("/api/v2/veiculos")).andExpect(status().isUnauthorized)
         mockMvc.perform(get("/api/v2/servicos")).andExpect(status().isUnauthorized)
         mockMvc.perform(get("/api/v2/catalogo/servicos")).andExpect(status().isUnauthorized)
     }

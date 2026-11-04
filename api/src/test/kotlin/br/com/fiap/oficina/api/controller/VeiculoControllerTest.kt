@@ -57,7 +57,7 @@ class VeiculoControllerTest {
 
         mockMvc
             .perform(
-                post("/veiculos")
+                post("/api/v2/veiculos")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(ApiTestSupport.json(ApiFixtures.veiculoRequest())),
             ).andExpect(status().isCreated)
@@ -73,7 +73,7 @@ class VeiculoControllerTest {
     fun givenBlankPlaca_whenCriar_thenReturn400WithFieldDetails() {
         mockMvc
             .perform(
-                post("/veiculos")
+                post("/api/v2/veiculos")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(ApiTestSupport.json(ApiFixtures.veiculoRequest(placa = ""))),
             ).andExpect(status().isBadRequest)
@@ -89,7 +89,7 @@ class VeiculoControllerTest {
         every { buscarVeiculoPorIdUseCase.executar(ApiFixtures.VEICULO_ID) } returns ApiFixtures.veiculoResponse()
 
         mockMvc
-            .perform(get("/veiculos/{id}", ApiFixtures.VEICULO_ID))
+            .perform(get("/api/v2/veiculos/{id}", ApiFixtures.VEICULO_ID))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(ApiFixtures.VEICULO_ID))
 
@@ -102,7 +102,7 @@ class VeiculoControllerTest {
         every { buscarVeiculoPorIdUseCase.executar(any()) } throws EntityNotFoundException("Veículo não encontrado")
 
         mockMvc
-            .perform(get("/veiculos/{id}", "inexistente"))
+            .perform(get("/api/v2/veiculos/{id}", "inexistente"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.message").value("Veículo não encontrado"))
     }
@@ -113,7 +113,7 @@ class VeiculoControllerTest {
         every { buscarVeiculoPorPlacaUseCase.executar(ApiFixtures.PLACA) } returns ApiFixtures.veiculoResponse()
 
         mockMvc
-            .perform(get("/veiculos/placa/{placa}", ApiFixtures.PLACA))
+            .perform(get("/api/v2/veiculos/placa/{placa}", ApiFixtures.PLACA))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.placa").value(ApiFixtures.PLACA))
 
@@ -127,7 +127,7 @@ class VeiculoControllerTest {
             listOf(ApiFixtures.veiculoResponse(), ApiFixtures.veiculoResponse(id = "outro-id", placa = "XYZ9876"))
 
         mockMvc
-            .perform(get("/veiculos/motorista/{motoristaId}", ApiFixtures.PROPRIETARIO_ID))
+            .perform(get("/api/v2/veiculos/motorista/{motoristaId}", ApiFixtures.PROPRIETARIO_ID))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[1].placa").value("XYZ9876"))
@@ -141,7 +141,7 @@ class VeiculoControllerTest {
         every { listarVeiculosUseCase.executar() } returns listOf(ApiFixtures.veiculoResponse())
 
         mockMvc
-            .perform(get("/veiculos"))
+            .perform(get("/api/v2/veiculos"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
 
@@ -158,7 +158,7 @@ class VeiculoControllerTest {
 
         mockMvc
             .perform(
-                put("/veiculos/{id}", ApiFixtures.VEICULO_ID)
+                put("/api/v2/veiculos/{id}", ApiFixtures.VEICULO_ID)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(ApiTestSupport.json(ApiFixtures.veiculoRequest(placa = "XYZ9876"))),
             ).andExpect(status().isOk)
@@ -172,7 +172,7 @@ class VeiculoControllerTest {
     @DisplayName("Dado um id existente, quando remover, entao deve retornar 200 e delegar ao use case")
     fun givenExistingId_whenRemover_thenReturn200AndDelegate() {
         mockMvc
-            .perform(delete("/veiculos/{id}", ApiFixtures.VEICULO_ID))
+            .perform(delete("/api/v2/veiculos/{id}", ApiFixtures.VEICULO_ID))
             .andExpect(status().isOk)
 
         verify(exactly = 1) { removerVeiculoUseCase.executar(ApiFixtures.VEICULO_ID) }
