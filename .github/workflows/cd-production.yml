@@ -187,9 +187,6 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Install gke-gcloud-auth-plugin
-        run: gcloud components install gke-gcloud-auth-plugin
-
       - name: Resolve Cloud SQL
         id: db
         run: |
@@ -214,10 +211,11 @@ jobs:
           echo "host=$DB_HOST" >> "$GITHUB_OUTPUT"
 
       - name: Configure kubectl
-        run: |
-          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER }} \
-            --zone ${{ secrets.GKE_ZONE }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Ensure namespace
         run: |
