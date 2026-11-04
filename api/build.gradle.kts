@@ -39,6 +39,8 @@ dependencies {
     implementation(project(":features:peca"))
     implementation(project(":features:cliente"))
     implementation(project(":features:veiculo"))
+    implementation(project(":features:servico"))
+    implementation(project(":features:ordemservico"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
