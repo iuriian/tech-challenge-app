@@ -56,8 +56,14 @@ Detalhamento em [docs/solucao-e-arquitetura.md](docs/solucao-e-arquitetura.md#1-
 
 | Componente | Tecnologia | Exposição | Função |
 |---|---|---|---|
-| **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST. Aplica as migrations do Flyway no boot |
+| **API Gateway** | ESPv2 gerenciado pelo Google · OpenAPI 2.0 | `https://oficina-api-gw-*.uc.gateway.dev` | Borda pública. Termina o TLS, valida assinatura/`iss`/`aud` do JWT e só deixa passar as rotas declaradas na spec |
+| **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080, IP reservado | API REST. Aplica as migrations do Flyway no boot |
 | **Cloud SQL** | PostgreSQL 16 gerenciado · externo ao cluster | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
+
+O gateway valida o token na borda e a aplicação valida **de novo**: o IP do Service
+continua público, então a aplicação não pode depender de ninguém para se defender.
+Papel (`ADMIN`, `ATENDENTE`, …) é decisão do `@RolesAllowed` — o gateway para o
+anônimo, o papel errado morre no app.
 
 Internamente a aplicação segue **Onion Architecture** — o domínio não conhece Spring,
 JPA nem HTTP:
@@ -70,6 +76,8 @@ JPA nem HTTP:
 |---|---|
 | Cluster GKE `tech-challenge-staging` (zonal, `us-central1-a`) | Deployment de `app` (o banco é externo) |
 | Node pool `e2-medium` spot, autoscaling de 1 a 3 nós | Service `LoadBalancer` e HPA de 1 a 3 réplicas |
+| API Gateway `oficina-api-gw` e a spec OpenAPI 2.0 que ele serve | — |
+| IP externo reservado do Service (`APP_LB_IP`) | `loadBalancerIP` no manifest do Service |
 | Secret Manager com a senha do banco | ConfigMaps e Secrets do namespace |
 | Service account `github-actions-cd` e papéis IAM | Namespace e ordem de aplicação (`k8s/deploy.sh`) |
 

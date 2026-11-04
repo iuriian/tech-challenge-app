@@ -129,6 +129,12 @@ metadata:
     app: app
 spec:
   type: LoadBalancer
+  # IP reservado (google_compute_address.app_lb no tech-challenge-infra-k8s).
+  # E o endereco que o API Gateway usa como backend: com o IP efemero que o GKE
+  # sorteia, recriar o Service troca o endereco e o gateway passa a responder
+  # 502 sem que nada aqui tenha mudado. O deploy.sh remove esta linha quando
+  # APP_LB_IP nao esta definido, para o manifest continuar servindo ao kind.
+  loadBalancerIP: __APP_LB_IP__
   selector:
     app: app
   ports:

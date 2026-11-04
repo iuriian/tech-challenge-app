@@ -98,8 +98,28 @@ de suporte — pull da imagem, escala do HPA, leitura das senhas e validação d
 
 | Componente | Imagem / tecnologia | Exposição | Função |
 |---|---|---|---|
-| **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080 | API REST do domínio. Aplica as migrations do Flyway no boot |
+| **API Gateway** | ESPv2 gerenciado pelo Google · spec OpenAPI 2.0 | `https://oficina-api-gw-*.uc.gateway.dev` | Borda pública. Termina o TLS, valida o JWT e recusa rota não declarada |
+| **app** | imagem própria · JRE 21 · Spring Boot 3.4 | Service `LoadBalancer` 80 → 8080, IP reservado | API REST do domínio. Aplica as migrations do Flyway no boot |
 | **Cloud SQL** | PostgreSQL 16 gerenciado · **externo ao cluster** | IP privado na VPC, porta 5432 | Base `oficina`. Provisionado pelo repositório `tech-challenge-database` |
+
+**A borda da API.** O consumidor entra pelo API Gateway, provisionado pelo
+`tech-challenge-infra-k8s` junto com o cluster. O que ele resolve:
+
+| | |
+|---|---|
+| **HTTPS** | certificado gerenciado no domínio `*.gateway.dev`; o IP do Service fala HTTP puro |
+| **Autenticação na borda** | busca o JWKS do emissor e valida assinatura, `iss` e `aud` antes de encostar no cluster |
+| **Superfície declarada** | as 45 rotas de `/api/v2` mais `/actuator/health` e a documentação; `/actuator/**` fora disso responde 404 no gateway |
+| **Custo** | zero até 2 milhões de chamadas/mês, sem cobrança por hora e sem load balancer novo |
+
+Duas decisões explicam o desenho. A primeira: o gateway alcança o cluster por
+`http://<ip-do-service>.sslip.io`, porque o API Gateway não roteia para IP da VPC e
+o ESPv2 resolve o backend por DNS — o `sslip.io` devolve o IP embutido no próprio
+hostname, sem domínio para registrar. A segunda: **o token é validado duas vezes**,
+no gateway e na aplicação. O IP do Service continua público, e uma aplicação que
+delega a própria defesa ao gateway fica aberta pela porta de trás. Papel
+(`ADMIN`, `ATENDENTE`, `MECANICO`, `CLIENTE`) é sempre decisão do `@RolesAllowed`:
+o gateway para o anônimo com `401`, o papel errado morre no app com `403`.
 
 O emissor dos tokens é externo: a aplicação é apenas um *resource server*, que lê
 `AUTH_ISSUER_URI` e `AUTH_AUDIENCE` e busca o JWKS em
@@ -160,9 +180,11 @@ state próprios, e por isso vive fora do repositório da aplicação.
 |---|---|
 | Cluster GKE | `tech-challenge-staging`, zonal em `us-central1-a`, release channel REGULAR, VPC-native |
 | Node pool `primary` | `e2-medium`, disco `pd-balanced` de 30 GB, **spot VMs**, autoscaling de 1 a 3 nós, auto-repair e auto-upgrade |
+| API Gateway | `oficina-api-gw` em `us-central1`, servindo a spec OpenAPI 2.0 de `openapi.yaml.tftpl`. O `issuer` usado na validação do JWT é lido do state do `tech-challenge-auth`, não copiado à mão |
+| IP externo | Endereço regional reservado para o Service `app`: entra no manifest como `loadBalancerIP` e é o backend do gateway. Preso à forwarding rule, não é cobrado |
 | Secret Manager | `<cluster>-db-password`, com senha aleatória gerada no apply |
 | Service Account | `github-actions-cd`, com papéis de `container.developer` e acesso de leitura aos secrets |
-| APIs do GCP | container, compute, logging, monitoring, secretmanager |
+| APIs do GCP | container, compute, logging, monitoring, secretmanager, apigateway, servicemanagement, servicecontrol |
 | VPC e subnet | Rede sem subnets automáticas, subnet única em `10.128.0.0/20` com Private Google Access. Compartilhada com o peering do Cloud SQL e o egress do serviço de autenticação — os outros repositórios a localizam **pelo nome**, que é o contrato entre eles |
 
 A instância do Cloud SQL **não** é provisionada por esse Terraform: ela vive no
@@ -193,7 +215,8 @@ flowchart LR
     B --> C["smoke test<br/>app + PostgreSQL<br/>6 endpoints validados"]
     C --> D["promote<br/>tag release-x.y.z<br/>no digest testado"]
     D --> E["deploy-staging<br/>secrets + dry-run<br/>k8s/deploy.sh"]
-    E --> F(["URL publicada<br/>no Environment staging"])
+    E --> E2["smoke test pela borda<br/>health pelo gateway +<br/>401 em rota protegida"]
+    E2 --> F(["URL publicada<br/>no Environment staging"])
     F -->|"merge em main<br/>tag vX.Y.Z"| G["CD - Production<br/>resolve o digest<br/>de release-x.y.z"]
     G --> H["smoke test<br/>do digest promovido"]
     H --> I(["Produção<br/>no Environment production"])
@@ -368,10 +391,10 @@ provisionamento tem pipeline próprio (`terraform plan` em Pull Request, `apply`
 merge para a main) e state remoto em bucket GCS, que ali deixa de ser recomendação:
 as senhas de staging são geradas por `random_password` e ficam gravadas no state.
 
-**O que atravessa a fronteira.** Três valores de identificação e uma credencial. Os
-três primeiros saem de `terraform output github_environment_variables`, rodado no
-repo de infra, e o `terraform output -raw get_credentials_command` entrega o comando
-de `get-credentials` já montado.
+**O que atravessa a fronteira.** Quatro valores de identificação e uma credencial.
+Os quatro saem de `terraform output github_environment_variables`, rodado no repo
+de infra, e o `terraform output -raw get_credentials_command` entrega o comando de
+`get-credentials` já montado.
 
 **Configuração no GitHub** — Settings → Environments → `staging` (o environment
 `production` pede os mesmos, apontando para o ambiente de produção, mais os
@@ -384,6 +407,9 @@ de `get-credentials` já montado.
 | Secret | `GCP_PROJECT_ID` | sim | Projeto no GCP |
 | Secret | `GKE_CLUSTER` | sim | Nome do cluster — também prefixa os secrets no Secret Manager |
 | Secret | `GKE_ZONE` | sim | Zona do cluster |
+| Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens — `terraform output -raw issuer` no repo de autenticação. O deploy falha antes de aplicar o ConfigMap se faltar |
+| Variable | `APP_LB_IP` | sim | IP reservado do Service — `terraform output -raw app_lb_ip`. Sem ela o Service recebe IP efêmero e o gateway continua apontando para o endereço antigo |
+| Variable | `API_GATEWAY_URL` | não | URL do gateway — `terraform output -raw api_gateway_url`. Quando presente, o CD faz o smoke test pela borda pública |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
 
 A chave da service account **não** é criada pelo Terraform de propósito: o recurso

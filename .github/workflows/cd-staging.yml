@@ -292,6 +292,7 @@ jobs:
       - name: Deploy to Kubernetes
         env:
           AUTH_ISSUER_URI: ${{ vars.AUTH_ISSUER_URI }}
+          APP_LB_IP: ${{ vars.APP_LB_IP }}
           DB_HOST: ${{ steps.db.outputs.host }}
           DB_SSLMODE: require
         run: |
@@ -356,6 +357,36 @@ jobs:
 
           echo "❌ A aplicacao nao respondeu pelo LoadBalancer"
           exit 1
+
+      - name: Smoke test pelo API Gateway
+        # A variable so existe depois do primeiro apply do tech-challenge-infra-k8s
+        # (terraform output api_gateway_url). Sem ela o deploy segue igual.
+        if: vars.API_GATEWAY_URL != ''
+        env:
+          GW: ${{ vars.API_GATEWAY_URL }}
+        run: |
+          GW="${GW%/}"
+
+          echo "🔍 $GW/actuator/health"
+          if ! curl -fsS --max-time 20 --retry 6 --retry-delay 10 --retry-all-errors "$GW/actuator/health"; then
+            echo "::error::O gateway nao alcancou a aplicacao. Confira se o IP do Service bate com o backend da api-config: terraform output api_gateway_backend_host."
+            exit 1
+          fi
+          echo ""
+
+          # Sem token, o gateway precisa recusar antes de encostar no cluster.
+          # 200 aqui significaria uma api-config publicada sem securityDefinitions.
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$GW/api/v2/clientes")"
+          if [ "$CODE" != "401" ]; then
+            echo "::error::GET /api/v2/clientes sem token devolveu $CODE, esperado 401 do gateway."
+            exit 1
+          fi
+          echo "✅ Rota protegida devolve 401 sem token"
+
+          {
+            echo "| API Gateway | $GW |"
+            echo "| Swagger UI (gateway) | $GW/swagger-ui/index.html |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Debug - diagnostico completo
         if: failure()

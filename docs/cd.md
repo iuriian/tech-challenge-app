@@ -63,7 +63,7 @@ flowchart TD
     R --> D
 
     subgraph D["deploy-staging"]
-        D1["autentica no GCP"] --> D2["cria secrets do cluster"] --> D3["dry-run dos manifests"] --> D4["k8s/deploy.sh"] --> D5["valida /actuator/health"]
+        D1["autentica no GCP"] --> D2["cria secrets do cluster"] --> D3["dry-run dos manifests"] --> D4["k8s/deploy.sh"] --> D5["valida /actuator/health"] --> D6["valida pelo API Gateway"]
     end
 
     D --> U(["URL publicada no<br/>Environment staging"])
@@ -157,6 +157,7 @@ interface do Actions.
 | Validate manifests | `kubectl apply --dry-run=server` — valida contra o cluster real, sem aplicar |
 | Deploy | `./k8s/deploy.sh <digest> staging <namespace>` |
 | Verify and expose URL | Espera o IP externo do Service, testa `/actuator/health` e escreve o resumo |
+| Smoke test pelo API Gateway | Só se a variable `API_GATEWAY_URL` existir: testa o health pela borda pública e exige `401` em `/api/v2/clientes` sem token. Um `200` ali significaria api-config publicada sem a validação de JWT |
 | Debug (`if: failure()`) | Imprime pods, services, PVCs, eventos e logs de todos os containers |
 
 **Sobre as senhas.** Elas não estão em nenhum lugar do repositório nem nos secrets do
@@ -176,9 +177,12 @@ A ordem existe por um motivo, e é o que o script encapsula:
    senha corrigida force um ReplicaSet novo em vez de um apply no-op.
 2. **ConfigMap `app-config`** — recebe `DB_HOST` (IP privado do Cloud SQL),
    `DB_SSLMODE`, issuer e audience dos tokens no lugar dos placeholders.
-3. **Aplicação**, com o digest da imagem. Emissor de tokens e banco são ambos
-   externos ao cluster e chegam pelo `app-config`, sem Service nem descoberta de
-   IP. O initContainer `wait-for-db` espera o `pg_isready` no `DB_HOST`.
+3. **Aplicação**, com o digest da imagem e o `APP_LB_IP` no `loadBalancerIP` do
+   Service — é o endereço que o API Gateway usa como backend, e sem ele o GKE
+   sortearia um IP novo a cada recriação do Service. Sem a variable definida, o
+   script remove a linha e avisa. Emissor de tokens e banco são ambos externos ao
+   cluster e chegam pelo `app-config`, sem Service nem descoberta de IP. O
+   initContainer `wait-for-db` espera o `pg_isready` no `DB_HOST`.
 4. **HPA** por último — aplicado antes, o alvo não existiria.
 
 Não há passo de PostgreSQL: o banco é um Cloud SQL externo, provisionado pelo
@@ -234,6 +238,8 @@ Settings → Environments → **staging**
 | Secret | `GKE_ZONE` | sim | Zona do cluster |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-staging` |
 | Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens; o deploy aborta se estiver vazia |
+| Variable | `APP_LB_IP` | sim | IP reservado do Service (`terraform output -raw app_lb_ip`). Sem ela o Service recebe IP efêmero e o API Gateway segue apontando para o endereço antigo |
+| Variable | `API_GATEWAY_URL` | não | URL do gateway. Quando presente, habilita o smoke test pela borda |
 | Variable | `DB_USER` | não | Padrão: `oficina_app` |
 
 Settings → Environments → **production**
@@ -244,6 +250,7 @@ Settings → Environments → **production**
 | Secret | `GCP_SA_KEY` · `GCP_PROJECT_ID` · `GKE_CLUSTER` · `GKE_ZONE` | sim | Mesmo papel que em staging, apontando para o ambiente de produção |
 | Secret | `GHCR_PAT` | **sim** | Diferente de staging: aqui a falta dele é erro, não aviso |
 | Variable | `AUTH_ISSUER_URI` | sim | Emissor dos tokens de produção |
+| Variable | `APP_LB_IP` · `API_GATEWAY_URL` | sim · não | Mesmo papel que em staging, com os outputs do Terraform do ambiente de produção |
 | Variable | `KUBE_NAMESPACE` | não | Padrão: `tech-challenge-production` |
 | Variable | `CLOUDSQL_INSTANCE` | não | Padrão: `<GKE_CLUSTER>-pg` |
 | Variable | `DB_PASSWORD_SECRET` | não | Padrão: `<GKE_CLUSTER>-db-password` |
@@ -343,6 +350,8 @@ migrations devem ser sempre compatíveis com a versão anterior da aplicação.
 | `O Service app nao recebeu IP externo` | Cota de LoadBalancer ou zona sem capacidade | `kubectl get svc -n <ns>` e checar cota do projeto |
 | Pod `Pending` | Nó sem CPU disponível | Aumentar `max_node_count` no repo de infra ou reduzir `requests` |
 | `401` com token válido | `AUTH_ISSUER_URI` ou `AUTH_AUDIENCE` divergentes do emissor | Conferir o `app-config` do namespace |
+| `502` pelo gateway, `200` pelo IP do Service | Backend da api-config com o endereço antigo do LB | Comparar `terraform output -raw api_gateway_backend_host` com o IP do Service e reaplicar o Terraform de infra |
+| `401` do gateway em rota aberta | Path não declarado na spec do gateway, ou declarado sem `security: []` | Ajustar `openapi.yaml.tftpl` no repo de infra |
 | App sobe e cai em loop | Falha de migration ou de conexão com o banco | O passo Debug já imprime `logs -c app --previous` |
 
 O passo **Debug** só roda em falha e imprime pods, services, PVCs, eventos do

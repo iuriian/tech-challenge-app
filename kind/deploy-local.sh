@@ -134,6 +134,7 @@ kubectl rollout status deployment/postgres -n "$NAMESPACE" --timeout="$ROLLOUT_T
 # ---------------------------------------------------------------------------
 echo "==> Aplicando aplicacao (issuer: $AUTH_ISSUER_URI)"
 sed -e "s|__IMAGE__|${IMAGE}|g" \
+    -e "/__APP_LB_IP__/d" \
     "$K8S_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 

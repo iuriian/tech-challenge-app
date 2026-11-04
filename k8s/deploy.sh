@@ -41,6 +41,13 @@ AUTH_ISSUER_URI="$(printf '%s' "${AUTH_ISSUER_URI:-}" | tr -d '[:space:]')"
 DB_HOST="$(printf '%s' "${DB_HOST:-}" | tr -d '[:space:]')"
 DB_SSLMODE="${DB_SSLMODE:-require}"
 
+# IP externo reservado do Service (google_compute_address.app_lb no repo
+# tech-challenge-infra-k8s, output app_lb_ip). E o backend do API Gateway: um
+# endereco que muda deixa o gateway apontando para o vazio. Vazio aqui, o
+# Service recebe um IP efemero do GKE - aceitavel em cluster descartavel, nao
+# no staging que esta atras do gateway.
+APP_LB_IP="$(printf '%s' "${APP_LB_IP:-}" | tr -d '[:space:]')"
+
 # Nome da app no New Relic, derivado do ambiente. Fixo no manifest, producao
 # reportaria sob o nome de staging e os dois ambientes se misturariam no APM.
 NEW_RELIC_APP_NAME="${NEW_RELIC_APP_NAME:-oficina-mecanica-$ENVIRONMENT}"
@@ -144,9 +151,18 @@ sed -e "s|__AUTH_ISSUER_URI__|${AUTH_ISSUER_URI}|g" \
 #    tech-challenge-auth) e chega pelo app-config, sem Service aqui.
 # ---------------------------------------------------------------------------
 echo "==> Aplicando aplicacao"
+if [[ -n "$APP_LB_IP" ]]; then
+  LB_IP_SED=(-e "s|__APP_LB_IP__|${APP_LB_IP}|g")
+else
+  echo "!! APP_LB_IP nao definido - o Service recebera um IP efemero e o" >&2
+  echo "!!          backend do API Gateway continuara no endereco antigo." >&2
+  LB_IP_SED=(-e "/__APP_LB_IP__/d")
+fi
+
 sed -e "s|__IMAGE__|${IMAGE}|g" \
     -e "s|__SECRETS_HASH__|${SECRETS_HASH}|g" \
     -e "s|__NEW_RELIC_APP_NAME__|${NEW_RELIC_APP_NAME}|g" \
+    "${LB_IP_SED[@]}" \
     "$SCRIPT_DIR/app/deployment.yaml" \
   | kubectl apply -n "$NAMESPACE" -f -
 kubectl rollout status deployment/app -n "$NAMESPACE" --timeout="$ROLLOUT_TIMEOUT"
